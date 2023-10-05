@@ -1,0 +1,17 @@
+rootProject.name = "OkRouter"
+include ':okrouter'
+include ':okrouter-runtime'
+include ':okrouter-plugin'
+include ':demo-base'
+include ':demo-login'
+include ':demo-web'
+include ':demo-biz1'
+include ':demo-biz2'
+include ':demo-app'
+
+project(":demo-base").projectDir = new File("example/demo-base")
+project(":demo-login").projectDir = new File("example/demo-login")
+project(":demo-web").projectDir = new File("example/demo-web")
+project(":demo-biz1").projectDir = new File("example/demo-biz1")
+project(":demo-biz2").projectDir = new File("example/demo-biz2")
+project(":demo-app").projectDir = new File("example/demo-app")

@@ -1,0 +1,70 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+buildscript {
+    ext.kotlin_version = "1.5.31"
+    ext.maven_username = System.getenv("ALIYUN_USERNAME")
+    ext.maven_password = System.getenv("ALIYUN_PASSWORD")
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            credentials {
+                username "$ALIYUN_USERNAME"
+                password "$ALIYUN_PASSWORD"
+            }
+            url 'https://packages.aliyun.com/maven/repository/2202395-release-jr0puW/'
+        }
+        maven {
+            credentials {
+                username "$ALIYUN_USERNAME"
+                password "$ALIYUN_PASSWORD"
+            }
+            url 'https://packages.aliyun.com/maven/repository/2202395-snapshot-3OoSzj/'
+        }
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:4.2.2"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath("com.anymore:auto-service-register:0.0.8")
+        classpath("com.anymore:okrouter-plugin:0.0.1-SNAPSHOT")
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+
+    configurations.all {
+
+        resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+        resolutionStrategy.cacheDynamicVersionsFor 0, 'seconds'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            credentials {
+                username "$ALIYUN_USERNAME"
+                password "$ALIYUN_PASSWORD"
+            }
+            url 'https://packages.aliyun.com/maven/repository/2202395-release-jr0puW/'
+        }
+        maven {
+            credentials {
+                username "$ALIYUN_USERNAME"
+                password "$ALIYUN_PASSWORD"
+            }
+            url 'https://packages.aliyun.com/maven/repository/2202395-snapshot-3OoSzj/'
+        }
+        maven { url "https://jitpack.io" }
+
+    }
+    configurations.all {
+
+        resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+        resolutionStrategy.cacheDynamicVersionsFor 0, 'seconds'
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}

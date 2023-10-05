@@ -1,0 +1,108 @@
+buildscript {
+    repositories {
+        maven { url 'https://maven.aliyun.com/repository/public/' }
+        maven { url 'https://maven.aliyun.com/repository/google' }
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.72"
+    }
+}
+
+//plugins {
+//    id 'org.jetbrains.kotlin.jvm' version '1.3.72'
+//}
+apply plugin: 'java-library'
+apply plugin: 'groovy'
+apply plugin: 'java'
+apply plugin: 'kotlin'
+
+
+repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://maven.aliyun.com/repository/jcenter/' }
+    maven { url 'https://maven.aliyun.com/repository/public/' }
+    maven { url 'https://maven.aliyun.com/repository/google/' }
+
+    maven {
+        credentials {
+            username "$ALIYUN_USERNAME"
+            password "$ALIYUN_PASSWORD"
+        }
+        url 'https://packages.aliyun.com/maven/repository/2202395-release-jr0puW/'
+    }
+}
+
+sourceCompatibility = 1.8
+
+//compileKotlin {
+//    kotlinOptions.jvmTarget = "1.8"
+//}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+dependencies {
+    implementation(gradleApi())
+    implementation(localGroovy())
+//    compileOnly("com.android.tools.build:gradle:3.2.0")
+    implementation('com.squareup:javapoet:1.13.0')
+    api("com.android.tools.build:gradle:4.2.2")
+    implementation("commons-io:commons-io:2.8.0")
+    implementation("commons-codec:commons-codec:1.15")
+    implementation("org.javassist:javassist:3.28.0-GA")
+//    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.3.72"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.3.72"
+//    implementation "org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.72"
+//    implementation(libs.plugin.kotlin)
+
+
+}
+
+apply plugin: 'maven'
+
+afterEvaluate {
+
+//    task javadocJar(type: Jar, dependsOn: javadoc) {
+//        classifier = 'javadoc'
+//        from 'build/docs/javadoc'
+//    }
+
+    task sourcesJar(type: Jar) {
+        from sourceSets.main.allSource
+        classifier = 'sources'
+    }
+
+    artifacts {
+        archives jar
+//        archives javadocJar
+        archives sourcesJar
+    }
+
+    uploadArchives {
+        repositories {
+            mavenDeployer {
+                repository(url: 'https://packages.aliyun.com/maven/repository/2202395-release-jr0puW/') {
+                    authentication(
+                            userName: "$maven_username",
+                            password: "$maven_password"
+                    )
+                }
+                snapshotRepository(url: 'https://packages.aliyun.com/maven/repository/2202395-snapshot-3OoSzj/') {
+                    authentication(
+                            userName: "$maven_username",
+                            password: "$maven_password"
+                    )
+                }
+                pom.version = VERSION
+                pom.artifactId = artifactId
+                pom.groupId = GROUP
+            }
+        }
+    }
+}
+
+//group 'com.anymore'
+//version VERSION

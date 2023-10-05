@@ -1,0 +1,52 @@
+//import com.anymore.okrouter.OkRouterTransformPlugin
+
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'auto-service'
+    id 'okrouter'
+}
+
+//apply plugin: OkRouterTransformPlugin
+
+android {
+    namespace 'com.anymore.okrouter.demo.app'
+    compileSdkVersion 33
+
+    defaultConfig {
+        applicationId "com.anymore.okrouter.demo.app"
+        minSdkVersion 24
+        targetSdkVersion 33
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+
+okRouter {
+    createOkRouterDoc = true
+    okRouterDocFile = project.file("路由文档.md").canonicalPath
+}
+
+dependencies {
+    api project(":demo-base")
+    api project(":demo-biz1")
+    api project(":demo-biz2")
+    api project(":demo-web")
+    api project(":demo-login")
+}
