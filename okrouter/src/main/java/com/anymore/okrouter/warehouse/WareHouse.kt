@@ -4,6 +4,7 @@ import android.net.Uri
 import com.anymore.okrouter.OkRouter.logger
 import com.anymore.okrouter.core.RouterInterceptor
 import java.util.*
+import kotlin.collections.LinkedHashMap
 
 /**
  * 路由仓储层，统一从此处获取路由信息以及拦截器信息
@@ -28,7 +29,7 @@ internal object WareHouse {
      * 正则路由，如果路由包含正则，则会存放在这里。
      */
     @JvmStatic
-    val regexRouters: MutableMap<RouterUri, RouterMeta> = TreeMap()
+    val regexRouters: MutableMap<RouterUri, RouterMeta> = LinkedHashMap()
 
     /**
      * 全局拦截器集合列表

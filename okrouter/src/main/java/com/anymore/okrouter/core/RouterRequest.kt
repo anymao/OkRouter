@@ -3,6 +3,8 @@ package com.anymore.okrouter.core
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.os.Parcelable
+import android.os.PersistableBundle
 import androidx.collection.ArrayMap
 import com.anymore.okrouter.OkRouter.application
 import com.anymore.okrouter.OkRouter.logger
@@ -321,6 +323,22 @@ class RouterRequest private constructor(
          */
         fun putCharSequenceArray(key: String?, value: Array<CharSequence>?) = apply {
             extras.putCharSequenceArray(key, value)
+        }
+
+        fun putParcelable(key: String?, value: Parcelable?) = apply {
+            extras.putParcelable(key, value)
+        }
+
+        fun putBundle(key: String?,value: Bundle?) = apply {
+            extras.putBundle(key, value)
+        }
+
+        fun putAll(bundle: Bundle) = apply {
+            extras.putAll(bundle)
+        }
+
+        fun putAll(bundle: PersistableBundle) = apply {
+            extras.putAll(bundle)
         }
 
 
