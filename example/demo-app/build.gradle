@@ -1,13 +1,13 @@
-//import com.anymore.okrouter.OkRouterTransformPlugin
+import com.anymore.okrouter.OkRouterTransformPlugin
 
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'auto-service'
-    id 'okrouter'
+//    id 'okrouter'
 }
 
-//apply plugin: OkRouterTransformPlugin
+apply plugin: OkRouterTransformPlugin
 
 android {
     namespace 'com.anymore.okrouter.demo.app'

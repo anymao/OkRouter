@@ -46,12 +46,16 @@ internal object WareHouse {
 
     @JvmStatic
     fun registerStableRouter(uri: String, meta: RouterMeta) {
-        stableRouters.putIfAbsent(uri, meta)
+        if (!stableRouters.containsKey(uri)) {
+            stableRouters[uri] = meta
+        }
     }
 
     @JvmStatic
     fun registerRegexRouter(uri: RouterUri, meta: RouterMeta) {
-        regexRouters.putIfAbsent(uri, meta)
+        if (!regexRouters.containsKey(uri)) {
+            regexRouters[uri] = meta
+        }
     }
 
     @JvmStatic
@@ -60,7 +64,9 @@ internal object WareHouse {
         meta: RouterInterceptorMeta,
         isGlobal: Boolean = false
     ) {
-        interceptorMetas.putIfAbsent(clazz, meta)
+        if (!interceptorMetas.containsKey(clazz)) {
+            interceptorMetas[clazz] = meta
+        }
         if (isGlobal) {
             globalInterceptors += clazz
         }
@@ -91,7 +97,7 @@ internal object WareHouse {
     }
 
 
-    fun getInterceptorInstance(clazz: Class<out RouterInterceptor>): RouterInterceptor? {
+    fun getInterceptorInstance(clazz: Class<out RouterInterceptor>): RouterInterceptor {
         val meta = interceptorMetas[clazz]
         var instance: RouterInterceptor? = null
         if (meta != null) {
@@ -102,7 +108,10 @@ internal object WareHouse {
             instance = newFactory.newInstance()
             registerInterceptor(
                 clazz,
-                RouterInterceptorMeta(clazz, clazz.name, "", newFactory, 0, false, false)
+                RouterInterceptorMeta(clazz, clazz.name, "", newFactory, 0,
+                    global = false,
+                    singleton = false
+                )
             )
         }
         return instance

@@ -2,9 +2,11 @@ package com.anymore.okrouter.core
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
 import android.os.PersistableBundle
+import androidx.annotation.RequiresApi
 import androidx.collection.ArrayMap
 import com.anymore.okrouter.OkRouter.application
 import com.anymore.okrouter.OkRouter.logger
@@ -337,6 +339,7 @@ class RouterRequest private constructor(
             extras.putAll(bundle)
         }
 
+        @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         fun putAll(bundle: PersistableBundle) = apply {
             extras.putAll(bundle)
         }

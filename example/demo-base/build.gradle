@@ -35,6 +35,6 @@ dependencies {
     api 'com.google.android.material:material:1.6.0'
     api 'androidx.constraintlayout:constraintlayout:2.1.4'
     api "com.anymore:auto-service-loader:0.0.8"
-    api "com.anymore:okrouter:0.0.1-SNAPSHOT"
-//    api project(":okrouter")
+//    api "com.anymore:okrouter:0.0.1-SNAPSHOT"
+    api project(":okrouter")
 }
