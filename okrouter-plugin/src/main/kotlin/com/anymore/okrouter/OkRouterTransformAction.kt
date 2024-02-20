@@ -107,9 +107,13 @@ internal class OkRouterTransformAction(
 
         val static = loader.makeClassInitializer()
         static.insertBefore(buildString {
-            append("{${srs.joinToString(separator = "\n")}}")
-            append("{${rrs.joinToString(separator = "\n")}}")
-            append("{${irs.joinToString(separator = "\n")}}")
+            append("{")
+            append(srs.joinToString(separator = "\n"))
+            append("\n")
+            append(rrs.joinToString(separator = "\n"))
+            append("\n")
+            append(irs.joinToString(separator = "\n"))
+            append("}")
         })
         loader.addMethod(
             CtNewMethod.make(

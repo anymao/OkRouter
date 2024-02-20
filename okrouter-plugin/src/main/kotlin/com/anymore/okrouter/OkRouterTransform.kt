@@ -69,7 +69,7 @@ class OkRouterTransform(private val project: Project) : Transform() {
             TransformManager.PROJECT_ONLY,
             Format.DIRECTORY
         )
-        if (targetDir.exists()) {
+        if (!targetDir.exists()) {
             targetDir.mkdirs()
         }
         AbsOkRouterAction.forTransform(classpath, targetDir, project).execute()
