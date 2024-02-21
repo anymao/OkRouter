@@ -21,7 +21,7 @@
             <option value="$PROJECT_DIR$/example/demo-web" />
             <option value="$PROJECT_DIR$/okrouter" />
             <option value="$PROJECT_DIR$/okrouter-plugin" />
-            <option value="$PROJECT_DIR$/okrouter-runtime" />
+            <option value="$PROJECT_DIR$/okrouter-stub" />
           </set>
         </option>
       </GradleProjectSettings>

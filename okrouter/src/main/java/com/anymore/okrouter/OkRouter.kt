@@ -18,6 +18,9 @@ object OkRouter {
 
     internal lateinit var application: Application
 
+    /**
+     * 当没有找到目标路由时候，会执行此Handler，可以在这里进行埋点，或者重定向
+     */
     @JvmStatic
     var routerLostHandler: RouterLostHandler = object : RouterLostHandler {}
 

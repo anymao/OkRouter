@@ -31,5 +31,5 @@ android {
 dependencies {
 
     implementation 'androidx.appcompat:appcompat:1.4.1'
-    compileOnly project(":okrouter-runtime")
+    compileOnly project(":okrouter-stub")
 }

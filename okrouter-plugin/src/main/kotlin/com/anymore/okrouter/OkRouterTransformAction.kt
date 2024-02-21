@@ -127,8 +127,8 @@ internal class OkRouterTransformAction(
                     builder.append("regex routers("+${Types.wareHouse.canonicalName()}.getRegexRouters().size()+")\n");
                     builder.append("router interceptors("+${Types.wareHouse.canonicalName()}.getInterceptorMetas().size()+")\n");
                     builder.append("global router interceptors("+${Types.wareHouse.canonicalName()}.getGlobalInterceptors().size()+")\n");
-                    ${Types.okRouter.canonicalName()}.getLogger().d(${Types.okRouter.canonicalName()}.TAG,builder.toString());
-                    ${Types.okRouter.canonicalName()}.getLogger().d(${Types.okRouter.canonicalName()}.TAG,"================================================================");
+                    ${Types.okRouter.canonicalName()}.getLogger().i(${Types.okRouter.canonicalName()}.TAG,builder.toString());
+                    ${Types.okRouter.canonicalName()}.getLogger().i(${Types.okRouter.canonicalName()}.TAG,"================================================================");
                 }
                 """.trimIndent(), loader
             )

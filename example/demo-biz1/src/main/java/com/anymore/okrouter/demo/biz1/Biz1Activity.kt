@@ -26,5 +26,15 @@ class Biz1Activity : AppCompatActivity() {
                 .putString("biz2Args", "hello OkRouter!")
                 .start(this)
         }
+        findViewById<View>(R.id.btn_3).setOnClickListener {
+            OkRouter.build("https://music.163.com/")
+                .putBoolean(Common.EXTRA_CHECK_LOGIN, true)
+                .start(this)
+        }
+        findViewById<View>(R.id.btn_4).setOnClickListener {
+            OkRouter.build("/not_existed_route".toRoute())
+                .putBoolean(Common.EXTRA_CHECK_LOGIN, true)
+                .start(this)
+        }
     }
 }

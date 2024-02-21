@@ -33,10 +33,6 @@ class RouterRequest private constructor(
             routerType
         )
 
-//    fun start(context: Context): RouterResponse {
-//        return RouterDispatcher.start(context, this)
-//    }
-
     override fun toString(): String {
         return "RouterRequest(requestCode=$requestCode, uri='$uri', headers=$headers, extras=$extras, routerType=$routerType)"
     }

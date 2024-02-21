@@ -1,6 +1,6 @@
 rootProject.name = "OkRouter"
 include ':okrouter'
-include ':okrouter-runtime'
+include ':okrouter-stub'
 include ':okrouter-plugin'
 include ':demo-base'
 include ':demo-login'

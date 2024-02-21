@@ -6,13 +6,13 @@ package com.anymore.okrouter.warehouse
 object OkRouterLoader {
 
     init {
-        throw UnsupportedOperationException("auto gen by OkRouter")
+        throw UnsupportedOperationException("auto gen by OkRouter Gradle Plugin")
     }
 
 
     @JvmStatic
     fun load(){
-        throw UnsupportedOperationException()
+        throw UnsupportedOperationException("auto gen by OkRouter Gradle Plugin")
     }
 
 }
