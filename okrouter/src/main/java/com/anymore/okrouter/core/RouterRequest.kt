@@ -1,11 +1,13 @@
 package com.anymore.okrouter.core
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
 import android.os.PersistableBundle
+import androidx.activity.result.ActivityResultLauncher
 import androidx.annotation.RequiresApi
 import androidx.collection.ArrayMap
 import com.anymore.okrouter.OkRouter.application
@@ -21,7 +23,8 @@ class RouterRequest private constructor(
     val uri: String,
     val headers: Map<String, Any>,
     val extras: Bundle,
-    val routerType: RouterType
+    val routerType: RouterType,
+    val launcher: ActivityResultLauncher<Intent>?
 ) {
 
     fun newBuilder(): Builder =
@@ -30,7 +33,8 @@ class RouterRequest private constructor(
             uri,
             ArrayMap<String, Any>().apply { putAll(headers) },
             Bundle().apply { putAll(extras) },
-            routerType
+            routerType,
+            launcher
         )
 
     override fun toString(): String {
@@ -43,16 +47,20 @@ class RouterRequest private constructor(
         private var uri: String?,
         private var headers: MutableMap<String, Any>,
         private var extras: Bundle,
-        private var routerType: RouterType
+        private var routerType: RouterType,
+        private var launcher: ActivityResultLauncher<Intent>? = null
     ) {
 
         constructor() : this(-1, null, ArrayMap(), Bundle(), RouterType.UNDEFINED)
 
         fun uri(uri: String) = apply { this.uri = uri }
 
+        @Deprecated("replace with launcher(launcher)", replaceWith = ReplaceWith(expression = "launcher(launcher)"))
         fun requestCode(requestCode: Int) = apply { this.requestCode = requestCode }
 
         fun routerType(routerType: RouterType) = apply { this.routerType = routerType }
+
+        fun launcher(launcher: ActivityResultLauncher<Intent>) = apply { this.launcher = launcher }
 
         fun header(key: String, value: Any) = apply {
             headers[key] = value
@@ -327,7 +335,7 @@ class RouterRequest private constructor(
             extras.putParcelable(key, value)
         }
 
-        fun putBundle(key: String?,value: Bundle?) = apply {
+        fun putBundle(key: String?, value: Bundle?) = apply {
             extras.putBundle(key, value)
         }
 
@@ -348,12 +356,19 @@ class RouterRequest private constructor(
             }
             parseQueries()
             putString(Extend.OKROUTER_RAW_URI, uri)
-            return RouterRequest(requestCode, u, headers, extras, routerType)
+            return RouterRequest(requestCode, u, headers, extras, routerType, launcher)
         }
 
         @JvmOverloads
         fun start(context: Context = application, requestCode: Int = -1): RouterResponse {
             requestCode(requestCode)
+            return RouterDispatcher.start(context, build())
+        }
+
+
+
+        fun start(context: Context, launcher: ActivityResultLauncher<Intent>): RouterResponse {
+            launcher(launcher)
             return RouterDispatcher.start(context, build())
         }
 

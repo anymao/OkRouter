@@ -3,7 +3,12 @@
 package com.anymore.okrouter.ktx
 
 import android.os.Bundle
+import android.view.View
+import androidx.fragment.app.Fragment
+import com.anymore.okrouter.OkRouter.logger
 import com.anymore.okrouter.core.RouterRequest
+import com.anymore.okrouter.core.RouterResponse
+import com.anymore.okrouter.core.RouterType
 
 fun Bundle.getBooleanCompatibly(key: String, defaultValue: Boolean = false): Boolean {
     val value = get(key) ?: return defaultValue
@@ -178,3 +183,29 @@ fun RouterRequest.getDoubleCompatibly(key: String, defaultValue: Double) =
 @JvmOverloads
 fun RouterRequest.getStringCompatibly(key: String, defaultValue: String? = null) =
     extras.getStringCompatibly(key, defaultValue)
+
+
+
+fun RouterResponse.getView():View?{
+    if (routerType != RouterType.VIEW){
+        logger.w("response.routerType != RouterType.VIEW")
+        return null
+    }
+    return target as? View
+}
+
+fun RouterResponse.requireView():View = requireNotNull(getView()){
+    "response.target is $target"
+}
+
+fun RouterResponse.getFragment():Fragment?{
+    if (routerType != RouterType.FRAGMENT){
+        logger.w("response.routerType != RouterType.FRAGMENT")
+        return null
+    }
+    return target as? Fragment
+}
+
+fun RouterResponse.requireFragment():View = requireNotNull(getView()){
+    "response.target is $target"
+}

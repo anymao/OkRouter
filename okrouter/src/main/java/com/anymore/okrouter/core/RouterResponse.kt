@@ -6,11 +6,11 @@ import androidx.collection.ArrayMap
  * Created by anymore on 2023/6/5.
  */
 class RouterResponse private constructor(
-    private val uri: String,
-    private val headers: Map<String, Any>,
-    private val routerType: RouterType,
-    private val routerResult: RouterResult,
-    private val target: Any?
+    val uri: String,
+    val headers: Map<String, Any>,
+    val routerType: RouterType,
+    val routerResult: RouterResult,
+    val target: Any?
 ) {
 
     fun newBuilder(): Builder = Builder(

@@ -128,7 +128,10 @@ internal class LaunchInterceptor(private val meta: RouterMeta) : RouterIntercept
         if (context !is Activity) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        if (request.requestCode > 0 && context is Activity) {
+        val launcher = request.launcher
+        if (launcher != null) {
+            launcher.launch(intent)
+        } else if (request.requestCode > 0 && context is Activity) {
             context.startActivityForResult(intent, request.requestCode)
         } else {
             context.startActivity(intent)

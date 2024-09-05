@@ -1,5 +1,6 @@
 package com.anymore.okrouter.demo.biz1
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -35,6 +36,17 @@ class Biz1Activity : AppCompatActivity() {
             OkRouter.build("/not_existed_route".toRoute())
                 .putBoolean(Common.EXTRA_CHECK_LOGIN, true)
                 .start(this)
+        }
+
+        findViewById<View>(R.id.btn_5).setOnClickListener {
+            setResult(RESULT_OK, Intent().apply {
+                putExtra("data", "hello")
+            })
+            finish()
+        }
+
+        findViewById<View>(R.id.btn_6).setOnClickListener {
+            OkRouter.build("/biz1_view_page".toRoute()).start(this)
         }
     }
 }
