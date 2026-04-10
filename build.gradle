@@ -1,8 +1,8 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
-    ext.kotlin_version = "1.5.31"
-    ext.maven_username = System.getenv("ALIYUN_USERNAME")
-    ext.maven_password = System.getenv("ALIYUN_PASSWORD")
+    ext.kotlin_version = "1.8.0"
+    ext.maven_username = "622f0a2d91cb0feebab71d3f"//System.getenv("ALIYUN_USERNAME")
+    ext.maven_password = "Vz1S)umP)IAp"//System.getenv("ALIYUN_PASSWORD")
     repositories {
         google()
         mavenCentral()
@@ -22,7 +22,7 @@ buildscript {
         }
     }
     dependencies {
-        classpath "com.android.tools.build:gradle:4.2.2"
+        classpath "com.android.tools.build:gradle:7.4.0"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath("com.anymore:auto-service-register:0.0.8")
 //        classpath("com.anymore:okrouter-plugin:0.0.1-SNAPSHOT")

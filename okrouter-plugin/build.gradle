@@ -4,18 +4,16 @@ buildscript {
         maven { url 'https://maven.aliyun.com/repository/google' }
     }
     dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.72"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.0"
     }
 }
 
-//plugins {
-//    id 'org.jetbrains.kotlin.jvm' version '1.3.72'
-//}
-apply plugin: 'java-library'
-apply plugin: 'groovy'
-apply plugin: 'java'
-apply plugin: 'kotlin'
-
+plugins {
+    id 'java-library'
+    id 'groovy'
+    id 'kotlin'
+    id 'maven-publish'
+}
 
 repositories {
     google()
@@ -33,76 +31,60 @@ repositories {
     }
 }
 
-sourceCompatibility = 1.8
+sourceCompatibility = 17
 
-//compileKotlin {
-//    kotlinOptions.jvmTarget = "1.8"
-//}
+compileKotlin {
+    kotlinOptions.jvmTarget = "17"
+}
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 dependencies {
     implementation(gradleApi())
     implementation(localGroovy())
-//    compileOnly("com.android.tools.build:gradle:3.2.0")
     implementation('com.squareup:javapoet:1.13.0')
-    api("com.android.tools.build:gradle:4.2.2")
-    implementation("commons-io:commons-io:2.8.0")
+    api("com.android.tools.build:gradle:7.4.0")
+    implementation("commons-io:commons-io:2.11.0")
     implementation("commons-codec:commons-codec:1.15")
     implementation("org.javassist:javassist:3.28.0-GA")
-//    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.3.72"
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.3.72"
-//    implementation "org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.72"
-//    implementation(libs.plugin.kotlin)
-
-
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.8.0"
 }
 
-apply plugin: 'maven'
+group = GROUP
+version = VERSION
 
-afterEvaluate {
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
 
-//    task javadocJar(type: Jar, dependsOn: javadoc) {
-//        classifier = 'javadoc'
-//        from 'build/docs/javadoc'
-//    }
+// 从 local.properties 读取 Maven 凭证
+def mavenUsername = project.findProperty("maven_username") ?: System.getenv("ALIYUN_USERNAME")
+def mavenPassword = project.findProperty("maven_password") ?: System.getenv("ALIYUN_PASSWORD")
 
-    task sourcesJar(type: Jar) {
-        from sourceSets.main.allSource
-        classifier = 'sources'
-    }
-
-    artifacts {
-        archives jar
-//        archives javadocJar
-        archives sourcesJar
-    }
-
-    uploadArchives {
-        repositories {
-            mavenDeployer {
-                repository(url: 'https://packages.aliyun.com/maven/repository/2202395-release-jr0puW/') {
-                    authentication(
-                            userName: "$maven_username",
-                            password: "$maven_password"
-                    )
-                }
-                snapshotRepository(url: 'https://packages.aliyun.com/maven/repository/2202395-snapshot-3OoSzj/') {
-                    authentication(
-                            userName: "$maven_username",
-                            password: "$maven_password"
-                    )
-                }
-                pom.version = VERSION
-                pom.artifactId = artifactId
-                pom.groupId = GROUP
-            }
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifactId = 'okrouter-plugin'
+            from components.java
         }
     }
-}
 
-//group 'com.anymore'
-//version VERSION
+    repositories {
+        maven {
+            // 判断是 release 还是 snapshot
+            def releasesRepoUrl = "https://packages.aliyun.com/maven/repository/2202395-release-jr0puW/"
+            def snapshotsRepoUrl = "https://packages.aliyun.com/maven/repository/2202395-snapshot-3OoSzj/"
+
+            url = VERSION.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            credentials {
+                username mavenUsername
+                password mavenPassword
+            }
+        }
+
+    }
+}

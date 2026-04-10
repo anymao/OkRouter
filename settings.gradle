@@ -1,7 +1,10 @@
 rootProject.name = "OkRouter"
 include ':okrouter'
 include ':okrouter-stub'
-include ':okrouter-plugin'
+def buildSrcGradle = file(rootProject.projectDir.absolutePath+"/buildSrc/build.gradle")
+if (!buildSrcGradle.exists()){
+    include ':okrouter-plugin'
+}
 include ':demo-base'
 include ':demo-login'
 include ':demo-web'

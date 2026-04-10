@@ -1,6 +1,5 @@
 package com.anymore.okrouter
 
-import android.databinding.tool.ext.toCamelCase
 import com.anymore.okrouter.Types.isSubTypeOf
 import javassist.ClassPool
 import javassist.CtClass
@@ -14,6 +13,8 @@ import java.io.FileInputStream
 import java.io.FileWriter
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.Locale
+import java.util.Locale.getDefault
 import java.util.jar.JarFile
 
 /**
@@ -35,6 +36,14 @@ internal abstract class AbsOkRouterAction(
 
         fun forTask(classpath: Collection<File>, targetDir: File, project: Project) =
             OkRouterTaskAction(classpath, targetDir, project)
+
+        private fun String.toCamelCase(): String {
+            return this.replaceFirstChar {
+                if (it.isLowerCase()) it.titlecase(
+                    getDefault()
+                ) else it.toString()
+            }
+        }
     }
 
     protected val okRouter = project.extensions.getByType(OkRouterExtension::class.java)
@@ -129,7 +138,14 @@ internal abstract class AbsOkRouterAction(
         interceptorElements: MutableMap<String, InterceptorElement>,
         interceptorAlias: MutableMap<String, InterceptorElement>
     ) {
+        val processedClassNames = mutableSetOf<String>()
         cls.forEach {
+            // 跳过已处理的类
+            if (it.name in processedClassNames) {
+                return@forEach
+            }
+            processedClassNames.add(it.name)
+
             val routerAnnotation = getAnnotation(it, Types.router.canonicalName())
             if (routerAnnotation != null) {
                 Logger.v("${it.name} has @Router annotation")
@@ -266,14 +282,14 @@ internal abstract class AbsOkRouterAction(
         }
         targetFile.createNewFile()
         val writer = FileWriter(targetFile)
-        writer.appendln("# OkRouter-Doc")
+        writer.appendLine("# OkRouter-Doc")
         val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CHINA)
-        writer.appendln("创建时间:${sdf.format(Date(System.currentTimeMillis()))}")
-        writer.appendln("## 1.路由")
+        writer.appendLine("创建时间:${sdf.format(Date(System.currentTimeMillis()))}")
+        writer.appendLine("## 1.路由")
         if (stableRouterElements.isNotEmpty()) {
-            writer.appendln("### 1.1 固定路由")
-            writer.appendln("|uri|class|type|interceptors|desc|")
-            writer.appendln("|----|----|----|----|----|")
+            writer.appendLine("### 1.1 固定路由")
+            writer.appendLine("|uri|class|type|interceptors|desc|")
+            writer.appendLine("|----|----|----|----|----|")
             stableRouterElements.forEach {
                 val interceptors =
                     TreeSet<InterceptorElement> { o1, o2 ->
@@ -281,16 +297,16 @@ internal abstract class AbsOkRouterAction(
                     }
                 interceptors.addAll(it.ics.mapNotNull { clazz -> interceptorElements[clazz] })
                 interceptors.addAll(it.ias.mapNotNull { alias -> interceptorAlias[alias] })
-                writer.appendln("|${it.uri}|${it.className}|${it.routerType.name.toCamelCase()}|${
+                writer.appendLine("|${it.uri}|${it.className}|${it.routerType.name.toCamelCase()}|${
                     interceptors.joinToString(separator = "->") { interceptor -> interceptor.className }
                 }|${it.desc}|")
             }
             writer.flush()
         }
         if (regexRouterElements.isNotEmpty()) {
-            writer.appendln("### 1.2 正则路由")
-            writer.appendln("|uri|class|type|interceptors|desc|")
-            writer.appendln("|----|----|----|----|----|")
+            writer.appendLine("### 1.2 正则路由")
+            writer.appendLine("|uri|class|type|interceptors|desc|")
+            writer.appendLine("|----|----|----|----|----|")
             regexRouterElements.forEach {
                 val interceptors =
                     TreeSet<InterceptorElement> { o1, o2 ->
@@ -298,7 +314,7 @@ internal abstract class AbsOkRouterAction(
                     }
                 interceptors.addAll(it.ics.mapNotNull { clazz -> interceptorElements[clazz] })
                 interceptors.addAll(it.ias.mapNotNull { alias -> interceptorAlias[alias] })
-                writer.appendln(
+                writer.appendLine(
                     "|${it.uri}|${it.className}|${it.routerType.name.toCamelCase()}|${
                         interceptors.joinToString(
                             separator = "->"
@@ -310,13 +326,13 @@ internal abstract class AbsOkRouterAction(
         }
 
         if (interceptorElements.isNotEmpty()) {
-            writer.appendln("## 2.拦截器")
-            writer.appendln("|class|alias|priority|global|singleton|desc|")
-            writer.appendln("|----|----|----|----|----|----|")
+            writer.appendLine("## 2.拦截器")
+            writer.appendLine("|class|alias|priority|global|singleton|desc|")
+            writer.appendLine("|----|----|----|----|----|----|")
             interceptorElements.forEach {
                 val key = it.key
                 val value = it.value
-                writer.appendln("|${key}|${value.alias}|${value.priority}|${value.global}|${value.singleton}|${value.desc}|")
+                writer.appendLine("|${key}|${value.alias}|${value.priority}|${value.global}|${value.singleton}|${value.desc}|")
             }
             writer.flush()
         }
