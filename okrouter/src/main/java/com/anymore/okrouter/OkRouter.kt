@@ -41,9 +41,10 @@ object OkRouter {
             logger.w("OkRouter 已经初始化，跳过重复 init() 调用")
             return
         }
-        application = context.applicationContext as Application
-        //加载路由表
+        //先加载路由表，成功后才赋值 application，避免 load 失败时处于半初始化态
+        //（application 非空但路由表未加载，start() 会误判为已初始化）
         OkRouterLoader.load()
+        application = context.applicationContext as Application
         initialized = true
     }
 
