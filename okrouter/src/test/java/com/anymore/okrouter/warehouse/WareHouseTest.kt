@@ -196,6 +196,28 @@ class WareHouseTest {
     }
 
     @Test
+    fun `interceptors with same priority ordered by class name`() {
+        // TestInterceptorA 和 TestInterceptorB 已在文件中定义
+        val clazzA = TestInterceptorA::class.java
+        val clazzB = TestInterceptorB::class.java
+
+        // 注册同优先级
+        WareHouse.registerInterceptor(clazzA,
+            RouterInterceptorMeta(clazzA, clazzA.name, "",
+                ReflectRouterInterceptorFactory(clazzA), 5, false, false))
+        WareHouse.registerInterceptor(clazzB,
+            RouterInterceptorMeta(clazzB, clazzB.name, "",
+                ReflectRouterInterceptorFactory(clazzB), 5, false, false))
+
+        val sorted = listOf(TestInterceptorB(), TestInterceptorA())
+            .sortedWith(PriorityRouterInterceptorComparator)
+
+        // TestInterceptorA 字典序在 TestInterceptorB 之前
+        assertEquals(TestInterceptorA::class.java, sorted[0]::class.java)
+        assertEquals(TestInterceptorB::class.java, sorted[1]::class.java)
+    }
+
+    @Test
     fun `get interceptor instance should use single factory instance when singleton`() {
         val clazzA = TestInterceptorA::class.java
 
