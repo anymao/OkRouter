@@ -3,6 +3,7 @@ package com.anymore.okrouter.warehouse
 import android.net.Uri
 import com.anymore.okrouter.OkRouter.logger
 import com.anymore.okrouter.core.RouterInterceptor
+import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -35,7 +36,9 @@ internal object WareHouse {
      */
     @JvmStatic
     val globalInterceptors: MutableSet<Class<out RouterInterceptor>> =
-        ConcurrentHashMap.newKeySet()
+        java.util.Collections.newSetFromMap(
+            ConcurrentHashMap<Class<out RouterInterceptor>, Boolean>()
+        )
 
     /**
      * 拦截器元信息映射，可以通过拦截器的Class获取其他信息，例如factory和priority
