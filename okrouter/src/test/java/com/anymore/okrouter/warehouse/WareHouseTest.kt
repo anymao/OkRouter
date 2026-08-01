@@ -247,8 +247,15 @@ class WareHouseTest {
             }
         }
         startGate.countDown()
-        latch.await()
-        executor.shutdown()
+        try {
+            // 加超时：任一并发任务异常卡死时测试立即失败，而非无限挂起
+            assertTrue(
+                "100 个并发任务应在 10 秒内完成",
+                latch.await(10, java.util.concurrent.TimeUnit.SECONDS)
+            )
+        } finally {
+            executor.shutdown()
+        }
 
         assertEquals(1, instances.size)
         assertEquals(1, createCount.get())
