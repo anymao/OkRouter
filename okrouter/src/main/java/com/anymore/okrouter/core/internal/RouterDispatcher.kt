@@ -1,6 +1,7 @@
 package com.anymore.okrouter.core.internal
 
 import android.content.Context
+import com.anymore.okrouter.OkRouter
 import com.anymore.okrouter.OkRouter.logger
 import com.anymore.okrouter.OkRouter.routerLostHandler
 import com.anymore.okrouter.core.*
@@ -37,7 +38,12 @@ internal object RouterDispatcher {
         }
         val interceptors = mutableListOf<RouterInterceptor>()
         ics.forEach {
-            val instance = WareHouse.getInterceptorInstance(it)
+            val instance = try {
+                WareHouse.getInterceptorInstance(it)
+            } catch (e: Exception) {
+                OkRouter.logger.e("RouterDispatcher: 拦截器实例化失败 ${it.name}", e)
+                null
+            }
             if (instance != null) {
                 interceptors += instance
             }

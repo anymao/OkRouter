@@ -364,7 +364,17 @@ class RouterRequest private constructor(
             requestCode(requestCode)
             val ctx = context ?: OkRouter.application
                 ?: throw IllegalStateException("OkRouter 未初始化，请先调用 OkRouter.init(context)")
-            return RouterDispatcher.start(ctx, build())
+            return try {
+                RouterDispatcher.start(ctx, build())
+            } catch (e: IllegalStateException) {
+                // build() 中 check(!u.isNullOrEmpty()) 抛出的异常
+                OkRouter.logger.e("RouterRequest: URI 参数非法", e)
+                RouterResponse.Builder()
+                    .uri(uri ?: "(null)")
+                    .routerType(routerType)
+                    .routerResult(RouterResult.InvalidRequest(e.message ?: "URI 为空"))
+                    .build()
+            }
         }
 
 
