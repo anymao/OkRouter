@@ -10,7 +10,7 @@ import android.os.PersistableBundle
 import androidx.activity.result.ActivityResultLauncher
 import androidx.annotation.RequiresApi
 import androidx.collection.ArrayMap
-import com.anymore.okrouter.OkRouter.application
+import com.anymore.okrouter.OkRouter
 import com.anymore.okrouter.OkRouter.logger
 import com.anymore.okrouter.core.internal.RouterDispatcher
 import java.io.Serializable
@@ -360,9 +360,11 @@ class RouterRequest private constructor(
         }
 
         @JvmOverloads
-        fun start(context: Context = application, requestCode: Int = -1): RouterResponse {
+        fun start(context: Context? = null, requestCode: Int = -1): RouterResponse {
             requestCode(requestCode)
-            return RouterDispatcher.start(context, build())
+            val ctx = context ?: OkRouter.application
+                ?: throw IllegalStateException("OkRouter 未初始化，请先调用 OkRouter.init(context)")
+            return RouterDispatcher.start(ctx, build())
         }
 
 

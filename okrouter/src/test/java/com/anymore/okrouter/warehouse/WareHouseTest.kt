@@ -2,11 +2,16 @@ package com.anymore.okrouter.warehouse
 
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import com.anymore.okrouter.OkRouter
 import com.anymore.okrouter.core.RouterType
 import com.anymore.okrouter.core.RouterInterceptor
+import com.anymore.okrouter.core.RouterRequest
 import com.anymore.okrouter.core.RouterResponse
+import com.anymore.okrouter.core.RouterResult
 import com.anymore.okrouter.core.internal.PriorityRouterInterceptorComparator
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertSame
@@ -274,6 +279,54 @@ class WareHouseTest {
 
         val cached = WareHouse.getInterceptorInstance(clazzA)
         assertSame(instance, cached)
+    }
+
+    // ===== OkRouter 初始化生命周期（Task 6） =====
+    // 说明：测试环境中 okrouter-stub 的 OkRouterLoader.load() 会直接抛出
+    // UnsupportedOperationException，因此本测试类中没有任何测试能成功完成 init()，
+    // OkRouter 在整个测试运行期间保持未初始化状态。若未来测试环境能成功初始化，
+    // 上述"未初始化"类测试会在 isInitialized() 为 true 时自动跳过失败断言。
+
+    @Test
+    fun `start before init throws IllegalStateException`() {
+        try {
+            OkRouter.start(RouterRequest.Builder().uri("okrouter://test/main").build())
+            // 走到这里说明没有抛出异常：若此时仍未初始化，则测试失败
+            if (!OkRouter.isInitialized()) {
+                org.junit.Assert.fail("Expected IllegalStateException")
+            }
+        } catch (e: IllegalStateException) {
+            assertTrue("异常消息应提示未初始化", e.message!!.contains("未初始化"))
+        }
+    }
+
+    @Test
+    fun `builder start without context before init throws IllegalStateException`() {
+        try {
+            RouterRequest.Builder().uri("okrouter://test/main").start()
+            if (!OkRouter.isInitialized()) {
+                org.junit.Assert.fail("Expected IllegalStateException")
+            }
+        } catch (e: IllegalStateException) {
+            assertTrue("异常消息应提示未初始化", e.message!!.contains("未初始化"))
+        }
+    }
+
+    @Test
+    fun `isInitialized returns false when not initialized`() {
+        // 测试环境中 init() 无法成功完成（stub load() 抛异常），状态应保持未初始化
+        assertFalse(OkRouter.isInitialized())
+    }
+
+    @Test
+    fun `start with explicit context works before init`() {
+        // 显式传入 context 时不受初始化状态限制，应返回 NotFound 而非抛异常
+        val response = OkRouter.start(
+            RouterRequest.Builder().uri("okrouter://test/main").build(),
+            RuntimeEnvironment.getApplication()
+        )
+        assertNotNull(response)
+        assertEquals(RouterResult.NotFound, response.routerResult)
     }
 
     private class TestInterceptorA : RouterInterceptor {
