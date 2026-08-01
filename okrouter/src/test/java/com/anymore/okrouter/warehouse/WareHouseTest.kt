@@ -1,5 +1,7 @@
 package com.anymore.okrouter.warehouse
 
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import com.anymore.okrouter.core.RouterType
 import com.anymore.okrouter.core.RouterInterceptor
 import com.anymore.okrouter.core.RouterResponse
@@ -11,6 +13,7 @@ import org.junit.Assert.assertSame
 import org.junit.Before
 import org.junit.Test
 
+@RunWith(RobolectricTestRunner::class)
 class WareHouseTest {
 
     @Before
@@ -111,7 +114,9 @@ class WareHouseTest {
                 clazzA,
                 clazzA.name,
                 "",
-                ReflectRouterInterceptorFactory(clazzA),
+                object : RouterInterceptorFactory(singleton = true) {
+                    override fun newInstance(): RouterInterceptor = TestInterceptorA()
+                },
                 5,
             false,
                 false
@@ -146,7 +151,9 @@ class WareHouseTest {
                 clazzA,
                 clazzA.name,
                 "",
-                ReflectRouterInterceptorFactory(clazzA),
+                object : RouterInterceptorFactory(singleton = true) {
+                    override fun newInstance(): RouterInterceptor = TestInterceptorA()
+                },
                 1,
                 false,
                 true

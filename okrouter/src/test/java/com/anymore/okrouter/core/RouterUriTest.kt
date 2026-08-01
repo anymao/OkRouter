@@ -1,5 +1,6 @@
 package com.anymore.okrouter.core
 
+import com.anymore.okrouter.warehouse.RouterUri
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -18,7 +19,7 @@ class RouterUriTest {
     fun `regex uri should be regex`() {
         val uri = RouterUri("https?", ".*", ".*", 1)
         assertTrue(uri.isRegex)
-        assertEquals("https?://.*/.*", uri.toString())
+        assertEquals("https?://.*.*", uri.toString())
     }
 
     @Test
