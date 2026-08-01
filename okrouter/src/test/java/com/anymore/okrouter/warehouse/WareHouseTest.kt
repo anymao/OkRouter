@@ -218,6 +218,38 @@ class WareHouseTest {
     }
 
     @Test
+    fun `singleton factory creates only one instance under concurrent access`() {
+        // 统计 newInstance 实际被调用的次数，验证并发下只创建一次
+        val createCount = java.util.concurrent.atomic.AtomicInteger(0)
+        val factory = object : RouterInterceptorFactory(singleton = true) {
+            override fun newInstance(): RouterInterceptor {
+                createCount.incrementAndGet()
+                // 放大竞态窗口，让并发竞争真实发生（否则首个线程可能先完成创建）
+                Thread.sleep(5)
+                return TestInterceptorA()
+            }
+        }
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(100)
+        val startGate = java.util.concurrent.CountDownLatch(1)
+        val latch = java.util.concurrent.CountDownLatch(100)
+        val instances = java.util.concurrent.ConcurrentHashMap.newKeySet<RouterInterceptor>()
+
+        repeat(100) {
+            executor.submit {
+                startGate.await() // 所有线程就绪后同时开跑
+                instances.add(factory.create())
+                latch.countDown()
+            }
+        }
+        startGate.countDown()
+        latch.await()
+        executor.shutdown()
+
+        assertEquals(1, instances.size)
+        assertEquals(1, createCount.get())
+    }
+
+    @Test
     fun `get interceptor instance should use single factory instance when singleton`() {
         val clazzA = TestInterceptorA::class.java
 
