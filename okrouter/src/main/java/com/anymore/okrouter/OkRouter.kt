@@ -20,9 +20,11 @@ object OkRouter {
      * 应用上下文，仅在 [init] 成功调用后非空。
      * 未初始化时 [start] 会抛出 [IllegalStateException] 而非崩溃于属性未初始化。
      */
+    @Volatile
     internal var application: Application? = null
         private set
 
+    @Volatile
     private var initialized = false
 
     /**
