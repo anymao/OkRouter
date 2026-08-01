@@ -34,9 +34,11 @@ fun getMatchRouterMeta(uri: String): RouterMeta? {
 
 读缓存用 `clearedUri`（不含 query），写缓存用原始 `uri`（含 query）。导致同一个路由 `/song/123?a=1` 和 `/song/123?a=2` 各自写入不同的缓存键，下一次请求 `/song/123?a=3` 读取 `clearedUri` 时缓存永远无法命中，白白重复正则匹配。
 
-**修复**：将第 92 行改为 `dynamicRouters[clearedUri.toString()] = it.value`，读写统一使用规范化后的 URI。
+**修复**：将第 92 行改为 `dynamicRouters[clearedUri.toString()] = it.value`，读写统一使用规范化后的 URI。同时规范化 URI 时同时清除 query 和 fragment（`clearQuery().clearFragment()`），避免 fragment 也污染缓存键。
 
-**测试**：修改现有 `match regex router and cache dynamic result` 测试用例，断言缓存键为不含 query 的规范化 URI；新增「同一路由不同 query 参数第二次应命中缓存」测试。
+**测试**：修改现有 `match regex router and cache dynamic result` 测试用例，断言缓存键为不含 query 和 fragment 的规范化 URI；新增「同一路由不同 query 参数第二次命中缓存」「同一路由不同 fragment 第二次命中缓存」测试。
+
+**已知限制**：`dynamicRouters` 缓存无容量上限，每个首次命中的规范化 URI 永久保留。这可能导致长运行进程的内存持续增长。阶段 C 将使用带容量上限的线程安全 LRU 缓存替代。
 
 ### 1.2 路由冲突构建期检测
 
@@ -47,12 +49,15 @@ fun getMatchRouterMeta(uri: String): RouterMeta? {
 **现状**：`registerStableRouter` 和 `registerRegexRouter` 在重复注册时静默忽略，保留第一个值。全量 classpath 的遍历顺序成为决定路由生效的隐式规则，冲突永远不会被发现。
 
 **修复**：
-1. 插件侧：在汇总阶段对生成的稳定路由 URI 和正则路由做去重检测，发现重复时输出 Gradle 构建错误，明确指出冲突 URI 和涉及模块。
-2. 运行时 `registerStableRouter` 增加日志警告作为兜底——构建期已拦截的情况下这是安全网。
+1. 插件侧：在汇总阶段检测冲突，范围限定为：
+   - 稳定路由重复 URI → 构建错误，指明冲突 URI 和冲突类名
+   - 逐字相同的正则路由 → 构建错误（`Set` 相等即可检测）
+2. 运行时 `registerStableRouter` 增加日志警告作为兜底。
+3. 重叠正则检测（不同表达式匹配相同 URI）和稳定/正则相互遮蔽检测推迟到阶段 C，届时配合 KSP 模块索引和静态分析做完整的路由冲突分析。
 
 **设计决策**：构建期以错误方式失败，而非警告。路由冲突是配置错误，与代码编译错误同级别对待。
 
-**实现提示**：插件侧在 `AbsOkRouterAction` 或 `OkRouterRegisterTask` 中，汇总所有模块注解信息后、调用 JavaPoet 生成 `OkRouterLoader` 之前，对所有稳定路由 URI 和正则路由做 `Set` 去重检测。发现重复时调用 `variant.errors.add()` 输出 Gradle 构建错误，指明冲突 URI。
+**实现提示**：插件侧在 `AbsOkRouterAction` 或 `OkRouterRegisterTask` 中，汇总所有模块注解信息后、调用 JavaPoet 生成 `OkRouterLoader` 之前，做去重检测。注意 javassist 扫描未记录模块来源，错误信息用冲突类名定位而非模块名。
 
 ---
 
@@ -76,7 +81,7 @@ fun getMatchRouterMeta(uri: String): RouterMeta? {
 
 **设计决策**：使用 `ConcurrentHashMap` 而非 `synchronized` 包装或不可变快照，原因是：(1) 改动最小化，集合操作语义不变；(2) 读写比例高（大部分集合只在 init 时写入、运行时只读），`ConcurrentHashMap` 读操作无锁；(3) 不可变快照模式更适合阶段 C 引入的路由表重构。
 
-`regexRouters` 原先使用 `LinkedHashMap` 以保证正则路由按 `priority` 顺序写入后的遍历顺序。修复时改为在 `getMatchRouterMeta` 中先将 `regexRouters` entrySet 按 priority 排序再遍历，以消除对插入顺序的依赖。
+`regexRouters` 原先使用 `LinkedHashMap` 以保证正则路由按 `priority` 顺序写入后的遍历顺序。修复时改为在 `getMatchRouterMeta` 中先将 `regexRouters` entrySet 按 `priority` 排序再遍历，以消除对插入顺序的依赖。同优先级时以 `RouterUri.toString()` 作为平局键，保证迭代顺序确定且可复现，与 2.2 的确定性原则一致。
 
 ### 2.2 拦截器稳定排序
 
@@ -130,11 +135,14 @@ fun create(): RouterInterceptor {
 - `init()` 可重复调用，无提示
 - `application` 使用 `lateinit var`，在未初始化时调用 `start()` 会抛出 `UninitializedPropertyAccessException`，信息不明确
 
+**关键问题**：当前 `start()` 签名使用了 `@JvmOverloads` + 默认参数 `context: Context = application`。Kotlin 的 `@JvmOverloads` 会生成 1 参的 synthetic 重载，该重载在进入方法体**之前**先求值默认参数 `application`。若未调用 `init()`，`UninitializedPropertyAccessException` 在方法体执行前就抛出，任何方法体内的检查都无法生效。同样的问题也存在于 `RouterRequest.Builder.start()`。
+
 **修复**：
-1. 增加 `private var initialized = false` 状态标记
-2. `init()` 检测重复调用：已初始化时记录警告并跳过 Loader 重新加载
-3. `start()` 在未初始化时抛出 `IllegalStateException("OkRouter 未初始化，请先调用 OkRouter.init(context)")`
-4. 暴露 `fun isInitialized(): Boolean` 供调用方检查
+1. 将 `internal lateinit var application: Application` 改为 `internal var application: Application? = null`
+2. `init()` 中赋值 `application = context.applicationContext as Application`，并设置 `initialized = true`；重复调用时记录警告并跳过
+3. `start()` 内部检查 `application` 是否为 null，为 null 时抛出 `IllegalStateException("OkRouter 未初始化，请先调用 OkRouter.init(context)")`
+4. 同样修复 `RouterRequest.Builder.start()` 中的默认参数问题
+5. 暴露 `fun isInitialized(): Boolean` 供调用方检查
 
 ---
 
@@ -170,10 +178,13 @@ sealed class RouterResult(val value: String) {
 
 对应改动：
 - `LaunchInterceptor`：catch 目标创建和启动异常，返回 `Failed(cause)`
-- `RouterDispatcher`：URI 解析或参数校验失败时返回 `InvalidRequest(reason)`
+- `RouterRequest.Builder.start()`：参数校验失败时（如 URI 为空），catch 并返回 `InvalidRequest(reason)`。注意校验发生在 `Builder` 侧，不在 `RouterDispatcher`——到达 dispatcher 的请求已经是 build 完成的合法对象
 - `RouterDispatcher`：`getInterceptorInstance()` 如果拦截器实例化抛异常（如构造函数依赖注入未就绪），catch 并返回 `Failed(cause)`。当前异常会未经处理穿透到调用方
 - 所有 `Failed` 和 `InvalidRequest` 结果在生成时通过 `OkRouter.logger` 输出 error 级别日志，包含请求 URI 和异常/原因，确保线上可排查
-- 向后兼容：现有代码 match `Ok`/`NotFound`/`Intercepted` 的分支不受影响
+
+**兼容性说明**：`RouterResult` 给 sealed class 新增子类型是**源码不兼容**变更。消费者的穷尽 `when`（不带 `else` 分支）在重新编译时会失败。二进制兼容（已编译 class）不受影响。发布说明应标注此变更，并建议消费者使用 `when` 时始终包含 `else` 分支以保持前向兼容。
+
+**错误边界声明**：3.1 的异常捕获范围限定为 `LaunchInterceptor`（目标创建和启动）和拦截器实例化（`getInterceptorInstance()`）。用户自定义 `RouterInterceptor.intercept()` 方法内部抛出的异常不在捕获范围内——这些异常由业务方自行处理，框架不介入。
 
 ---
 
@@ -185,7 +196,7 @@ sealed class RouterResult(val value: String) {
 |--------|----------|
 | 1.1 缓存键 | 带不同 query 参数的同一路由第二次请求命中缓存，不再执行正则匹配 |
 | 1.2 路由冲突 | 重复 URI 注册触发 Gradle 构建失败，错误信息指明冲突 URI |
-| 2.1 线程安全 | 多线程并发导航 1000 次无数据竞争（通过 ThreadSanitizer 或压力测试验证） |
+| 2.1 线程安全 | 多线程并发导航 1000 次无数据竞争（压力测试 + 单例计数验证） |
 | 2.2 稳定排序 | 同优先级拦截器顺序在不同构建、不同设备上一致 |
 | 2.3 Factory | 并发 100 线程获取单例拦截器，只创建一个实例 |
 | 2.4 初始化 | 未 init 调用 start 抛出明确 `IllegalStateException`；重复 init 输出警告 |
