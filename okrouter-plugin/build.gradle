@@ -4,7 +4,7 @@ buildscript {
         maven { url 'https://maven.aliyun.com/repository/google' }
     }
     dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.0"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0"
     }
 }
 
@@ -46,11 +46,11 @@ dependencies {
     implementation(gradleApi())
     implementation(localGroovy())
     implementation('com.squareup:javapoet:1.13.0')
-    api("com.android.tools.build:gradle:7.4.0")
+    api("com.android.tools.build:gradle:8.13.0")
     implementation("commons-io:commons-io:2.11.0")
     implementation("commons-codec:commons-codec:1.15")
     implementation("org.javassist:javassist:3.28.0-GA")
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.8.0"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:2.1.0"
 }
 
 group = GROUP
@@ -61,9 +61,11 @@ java {
     withJavadocJar()
 }
 
-// 从 local.properties 读取 Maven 凭证
+// 从 Gradle 属性或环境变量读取 Maven 凭证，避免将私服密钥提交到仓库。
 def mavenUsername = project.findProperty("maven_username") ?: System.getenv("ALIYUN_USERNAME")
 def mavenPassword = project.findProperty("maven_password") ?: System.getenv("ALIYUN_PASSWORD")
+def releasesRepoUrl = project.findProperty("maven_release_url") ?: System.getenv("MAVEN_RELEASE_URL") ?: "https://packages.aliyun.com/maven/repository/2202395-release-jr0puW/"
+def snapshotsRepoUrl = project.findProperty("maven_snapshot_url") ?: System.getenv("MAVEN_SNAPSHOT_URL") ?: "https://packages.aliyun.com/maven/repository/2202395-snapshot-3OoSzj/"
 
 publishing {
     publications {
@@ -75,10 +77,7 @@ publishing {
 
     repositories {
         maven {
-            // 判断是 release 还是 snapshot
-            def releasesRepoUrl = "https://packages.aliyun.com/maven/repository/2202395-release-jr0puW/"
-            def snapshotsRepoUrl = "https://packages.aliyun.com/maven/repository/2202395-snapshot-3OoSzj/"
-
+            name = "privateMaven"
             url = VERSION.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
             credentials {
                 username mavenUsername

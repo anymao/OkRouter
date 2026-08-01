@@ -1,0 +1,98 @@
+<mxfile host="app.diagrams.net" modified="2026-08-01T00:00:00.000Z" agent="Codex" version="26.0.0" type="github">
+  <diagram id="compile-time-flow" name="编译时生成流程">
+    <mxGraphModel dx="1162" dy="719" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="720" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="n1" value="业务代码 &amp; @Router/@Interceptor" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=1;fillColor=#FFF2CC;strokeColor=#D6B656;" vertex="1" parent="1">
+          <mxGeometry x="30" y="40" width="240" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="n2" value="OkRouterRegisterTask&lt;br&gt;扫描 classpath (Javassist)" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=1;fillColor=#D5E8D4;strokeColor=#82B366;" vertex="1" parent="1">
+          <mxGeometry x="320" y="40" width="260" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="n3" value="生成 OkRouterLoader.java" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=1;fillColor=#D5E8D4;strokeColor=#82B366;" vertex="1" parent="1">
+          <mxGeometry x="650" y="40" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="n4" value="OkRouterCompileTask&lt;br&gt;编译到变体 classes 目录" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=1;fillColor=#D5E8D4;strokeColor=#82B366;" vertex="1" parent="1">
+          <mxGeometry x="930" y="40" width="240" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="n5" value="运行时加载：OkRouter.init() =&gt; OkRouterLoader.load()" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="470" y="210" width="300" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="n1" target="n2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="n2" target="n3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="n3" target="n4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="n4" target="n5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="runtime-flow" name="运行时分发流程">
+    <mxGraphModel dx="1162" dy="719" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="720" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="r1" value="OkRouter.build(uri) + start(context)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;" vertex="1" parent="1">
+          <mxGeometry x="30" y="40" width="220" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="r2" value="RouterDispatcher.getMatchRouterMeta()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;" vertex="1" parent="1">
+          <mxGeometry x="290" y="40" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="r3" value="WareHouse 匹配&lt;br&gt;stable / dynamic / regex" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;" vertex="1" parent="1">
+          <mxGeometry x="570" y="40" width="240" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="r4" value="组装拦截器列表&lt;br&gt;global + route 级别" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;" vertex="1" parent="1">
+          <mxGeometry x="870" y="40" width="240" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="r5" value="按 priority 排序 + append LaunchInterceptor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;" vertex="1" parent="1">
+          <mxGeometry x="110" y="220" width="260" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="r6" value="RealRouterChain.proceed() 逐个拦截" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;" vertex="1" parent="1">
+          <mxGeometry x="410" y="220" width="250" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="r7" value="LaunchInterceptor 根据 RouterType 分发" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="700" y="220" width="290" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="r8" value="返回 RouterResponse" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="220" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="rn1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="r1" target="r2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rn2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="r2" target="r3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rn3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="r3" target="r4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rn4" value="未匹配路由" style="edgeStyle=orthogonalEdgeStyle;rounded=0;dashed=1;endArrow=block;html=1;strokeColor=#B85450;" edge="1" parent="1" source="r2" target="r8">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="640" y="170"/>
+              <mxPoint x="1130" y="170"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rn5" value="匹配成功" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="r4" target="r5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rn6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="r5" target="r6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rn7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="r6" target="r7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rn8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;" edge="1" parent="1" source="r7" target="r8">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

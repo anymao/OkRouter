@@ -31,9 +31,6 @@ internal abstract class AbsOkRouterAction(
         const val targetPkg = "com.anymore.okrouter.warehouse"
         const val loaderName = "OkRouterLoader"
 
-        fun forTransform(classpath: Collection<File>, targetDir: File, project: Project) =
-            OkRouterTransformAction(classpath, targetDir, project)
-
         fun forTask(classpath: Collection<File>, targetDir: File, project: Project) =
             OkRouterTaskAction(classpath, targetDir, project)
 

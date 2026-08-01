@@ -1,28 +1,30 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
-    ext.kotlin_version = "1.8.0"
-    ext.maven_username = "622f0a2d91cb0feebab71d3f"//System.getenv("ALIYUN_USERNAME")
-    ext.maven_password = "Vz1S)umP)IAp"//System.getenv("ALIYUN_PASSWORD")
+    ext.kotlin_version = "2.1.0"
+    def mavenUsername = findProperty("maven_username") ?: System.getenv("ALIYUN_USERNAME")
+    def mavenPassword = findProperty("maven_password") ?: System.getenv("ALIYUN_PASSWORD")
+    def releasesRepoUrl = findProperty("maven_release_url") ?: System.getenv("MAVEN_RELEASE_URL") ?: "https://packages.aliyun.com/maven/repository/2202395-release-jr0puW/"
+    def snapshotsRepoUrl = findProperty("maven_snapshot_url") ?: System.getenv("MAVEN_SNAPSHOT_URL") ?: "https://packages.aliyun.com/maven/repository/2202395-snapshot-3OoSzj/"
     repositories {
         google()
         mavenCentral()
         maven {
             credentials {
-                username "$ALIYUN_USERNAME"
-                password "$ALIYUN_PASSWORD"
+                username mavenUsername
+                password mavenPassword
             }
-            url 'https://packages.aliyun.com/maven/repository/2202395-release-jr0puW/'
+            url releasesRepoUrl
         }
         maven {
             credentials {
-                username "$ALIYUN_USERNAME"
-                password "$ALIYUN_PASSWORD"
+                username mavenUsername
+                password mavenPassword
             }
-            url 'https://packages.aliyun.com/maven/repository/2202395-snapshot-3OoSzj/'
+            url snapshotsRepoUrl
         }
     }
     dependencies {
-        classpath "com.android.tools.build:gradle:7.4.0"
+        classpath "com.android.tools.build:gradle:8.13.0"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath("com.anymore:auto-service-register:0.0.8")
 //        classpath("com.anymore:okrouter-plugin:0.0.1-SNAPSHOT")
@@ -38,22 +40,26 @@ buildscript {
 }
 
 allprojects {
+    def mavenUsername = findProperty("maven_username") ?: System.getenv("ALIYUN_USERNAME")
+    def mavenPassword = findProperty("maven_password") ?: System.getenv("ALIYUN_PASSWORD")
+    def releasesRepoUrl = findProperty("maven_release_url") ?: System.getenv("MAVEN_RELEASE_URL") ?: "https://packages.aliyun.com/maven/repository/2202395-release-jr0puW/"
+    def snapshotsRepoUrl = findProperty("maven_snapshot_url") ?: System.getenv("MAVEN_SNAPSHOT_URL") ?: "https://packages.aliyun.com/maven/repository/2202395-snapshot-3OoSzj/"
     repositories {
         google()
         mavenCentral()
         maven {
             credentials {
-                username "$ALIYUN_USERNAME"
-                password "$ALIYUN_PASSWORD"
+                username mavenUsername
+                password mavenPassword
             }
-            url 'https://packages.aliyun.com/maven/repository/2202395-release-jr0puW/'
+            url releasesRepoUrl
         }
         maven {
             credentials {
-                username "$ALIYUN_USERNAME"
-                password "$ALIYUN_PASSWORD"
+                username mavenUsername
+                password mavenPassword
             }
-            url 'https://packages.aliyun.com/maven/repository/2202395-snapshot-3OoSzj/'
+            url snapshotsRepoUrl
         }
         maven { url "https://jitpack.io" }
 
