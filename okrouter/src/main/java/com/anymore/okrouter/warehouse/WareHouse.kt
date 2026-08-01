@@ -3,8 +3,7 @@ package com.anymore.okrouter.warehouse
 import android.net.Uri
 import com.anymore.okrouter.OkRouter.logger
 import com.anymore.okrouter.core.RouterInterceptor
-import java.util.*
-import kotlin.collections.LinkedHashMap
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 路由仓储层，统一从此处获取路由信息以及拦截器信息
@@ -16,33 +15,34 @@ internal object WareHouse {
      * 此Map应在编译时填充
      */
     @JvmStatic
-    val stableRouters: MutableMap<String, RouterMeta> = HashMap()
+    val stableRouters: MutableMap<String, RouterMeta> = ConcurrentHashMap()
 
     /**
      * 如果路由命中正则路由，将会将此映射加入到此Map中
      * 在下一次映射的时候将会之间从这里面取，无需再次正则匹配
      */
     @JvmStatic
-    val dynamicRouters: MutableMap<String, RouterMeta> = HashMap()
+    val dynamicRouters: MutableMap<String, RouterMeta> = ConcurrentHashMap()
 
     /**
      * 正则路由，如果路由包含正则，则会存放在这里。
      */
     @JvmStatic
-    val regexRouters: MutableMap<RouterUri, RouterMeta> = LinkedHashMap()
+    val regexRouters: MutableMap<RouterUri, RouterMeta> = ConcurrentHashMap()
 
     /**
      * 全局拦截器集合列表
      */
     @JvmStatic
-    val globalInterceptors: MutableSet<Class<out RouterInterceptor>> = HashSet()
+    val globalInterceptors: MutableSet<Class<out RouterInterceptor>> =
+        ConcurrentHashMap.newKeySet()
 
     /**
      * 拦截器元信息映射，可以通过拦截器的Class获取其他信息，例如factory和priority
      */
     @JvmStatic
     val interceptorMetas: MutableMap<Class<out RouterInterceptor>, RouterInterceptorMeta> =
-        HashMap()
+        ConcurrentHashMap()
 
     @JvmStatic
     fun registerStableRouter(uri: String, meta: RouterMeta) {
@@ -85,16 +85,19 @@ internal object WareHouse {
         val (scheme, host, path) = clearedUri.run {
             Triple(scheme.orEmpty(), host.orEmpty(), path.orEmpty())
         }
-        regexRouters.forEach {
-            val key = it.key
-            if (key.scheme.toRegex().matches(scheme) && key.host.toRegex()
-                    .matches(host) && key.path.toRegex().matches(path)
-            ) {
-                logger.d("match regex router:${it.value.uri}")
-                dynamicRouters[clearedUri.toString()] = it.value
-                return it.value
+        // ConcurrentHashMap 遍历无序，按 priority + URI 字典序排序后遍历，保证命中确定性
+        regexRouters.entries
+            .sortedWith(compareBy<Map.Entry<RouterUri, RouterMeta>> { it.key.priority }
+                .thenBy { it.key.toString() })
+            .forEach { (key, value) ->
+                if (key.scheme.toRegex().matches(scheme) && key.host.toRegex()
+                        .matches(host) && key.path.toRegex().matches(path)
+                ) {
+                    logger.d("match regex router:${value.uri}")
+                    dynamicRouters[clearedUri.toString()] = value
+                    return value
+                }
             }
-        }
         return null
     }
 

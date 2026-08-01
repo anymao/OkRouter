@@ -94,6 +94,46 @@ class WareHouseTest {
     }
 
     @Test
+    fun `regex routers iterate in stable priority order`() {
+        // 注册两条同优先级正则路由（priority 相同）
+        val regex1 = RouterUri("https?", ".*", "/user/.*", 0)
+        val regex2 = RouterUri("https?", ".*", "/song/.*", 0)
+        val meta1 = RouterMeta(regex1, RouterType.ACTIVITY, "com.example.UserActivity",
+            WareHouseTest::class.java, emptyArray())
+        val meta2 = RouterMeta(regex2, RouterType.ACTIVITY, "com.example.SongActivity",
+            WareHouseTest::class.java, emptyArray())
+
+        WareHouse.registerRegexRouter(regex1, meta1)
+        WareHouse.registerRegexRouter(regex2, meta2)
+
+        // /song/.* 在 toString 字典序中排在 /user/.* 之前
+        // 所以 /song/test 应命中 regex2
+        val result = WareHouse.getMatchRouterMeta("https://example.com/song/test")
+        assertNotNull(result)
+        assertEquals("com.example.SongActivity", result!!.clazzName)
+    }
+
+    @Test
+    fun `regex routers iterate in deterministic sorted order when both match`() {
+        // 两个正则都能匹配同一路径，且注册顺序与字典序相反
+        val regexSpecific = RouterUri("https?", ".*", "/song/test", 0)
+        val regexBroad = RouterUri("https?", ".*", "/song/.*", 0)
+        val metaSpecific = RouterMeta(regexSpecific, RouterType.ACTIVITY,
+            "com.example.SpecificActivity", WareHouseTest::class.java, emptyArray())
+        val metaBroad = RouterMeta(regexBroad, RouterType.ACTIVITY,
+            "com.example.BroadActivity", WareHouseTest::class.java, emptyArray())
+
+        // 先注册字典序较大的 /song/test（若按插入顺序遍历会先命中它）
+        WareHouse.registerRegexRouter(regexSpecific, metaSpecific)
+        WareHouse.registerRegexRouter(regexBroad, metaBroad)
+
+        // 排序后 /song/.* 字典序更小，应优先命中 BroadActivity
+        val result = WareHouse.getMatchRouterMeta("https://example.com/song/test")
+        assertNotNull(result)
+        assertEquals("com.example.BroadActivity", result!!.clazzName)
+    }
+
+    @Test
     fun `register stable router should ignore duplicate uri`() {
         val uri = RouterUri("okrouter", "android", "/main", 0)
         val oldMeta = RouterMeta(
