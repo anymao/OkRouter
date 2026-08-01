@@ -44,7 +44,7 @@ class WareHouseTest {
     }
 
     @Test
-    fun `match regex router and cache dynamic result`() {
+    fun `match regex router and cache dynamic result with cleared query and fragment`() {
         val regex = RouterUri("https?", ".*", ".*", 0)
         val regexMeta = RouterMeta(
             regex,
@@ -56,11 +56,25 @@ class WareHouseTest {
 
         WareHouse.registerRegexRouter(regex, regexMeta)
 
-        val result = WareHouse.getMatchRouterMeta("https://music.163.com/song/123?track=1")
-        assertNotNull(result)
-        assertEquals(regexMeta, result)
+        // 第一次请求：带 query 和 fragment
+        val result1 = WareHouse.getMatchRouterMeta("https://music.163.com/song/123?track=1#tab")
+        assertNotNull(result1)
+        assertEquals(regexMeta, result1)
         assertEquals(1, WareHouse.dynamicRouters.size)
-        assertTrue(WareHouse.dynamicRouters.containsKey("https://music.163.com/song/123?track=1"))
+        // 缓存键应为规范化后的 URI（无 query，无 fragment）
+        assertTrue(WareHouse.dynamicRouters.containsKey("https://music.163.com/song/123"))
+
+        // 第二次请求：不同 query 参数，应命中缓存
+        val result2 = WareHouse.getMatchRouterMeta("https://music.163.com/song/123?track=2")
+        assertNotNull(result2)
+        assertEquals(regexMeta, result2)
+        assertEquals(1, WareHouse.dynamicRouters.size) // 缓存数量未增长
+
+        // 第三次请求：不同 fragment，应命中缓存
+        val result3 = WareHouse.getMatchRouterMeta("https://music.163.com/song/123#tab2")
+        assertNotNull(result3)
+        assertEquals(regexMeta, result3)
+        assertEquals(1, WareHouse.dynamicRouters.size)
     }
 
     @Test

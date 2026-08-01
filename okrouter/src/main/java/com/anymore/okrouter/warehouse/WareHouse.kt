@@ -74,7 +74,7 @@ internal object WareHouse {
 
     fun getMatchRouterMeta(uri: String): RouterMeta? {
         logger.v("getMatchRouterMeta for full uri:$uri")
-        val clearedUri = Uri.parse(uri).buildUpon().clearQuery().build()
+        val clearedUri = Uri.parse(uri).buildUpon().clearQuery().fragment(null).build()
         logger.v("build cleared uri $clearedUri")
         var result = stableRouters[clearedUri.toString()]
         if (result != null) return result
@@ -89,7 +89,7 @@ internal object WareHouse {
                     .matches(host) && key.path.toRegex().matches(path)
             ) {
                 logger.d("match regex router:${it.value.uri}")
-                dynamicRouters[uri] = it.value
+                dynamicRouters[clearedUri.toString()] = it.value
                 return it.value
             }
         }
