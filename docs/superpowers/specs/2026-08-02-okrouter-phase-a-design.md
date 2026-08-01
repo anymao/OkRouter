@@ -52,6 +52,8 @@ fun getMatchRouterMeta(uri: String): RouterMeta? {
 
 **设计决策**：构建期以错误方式失败，而非警告。路由冲突是配置错误，与代码编译错误同级别对待。
 
+**实现提示**：插件侧在 `AbsOkRouterAction` 或 `OkRouterRegisterTask` 中，汇总所有模块注解信息后、调用 JavaPoet 生成 `OkRouterLoader` 之前，对所有稳定路由 URI 和正则路由做 `Set` 去重检测。发现重复时调用 `variant.errors.add()` 输出 Gradle 构建错误，指明冲突 URI。
+
 ---
 
 ## 第二组：线程安全与确定性（P1）
@@ -143,6 +145,7 @@ fun create(): RouterInterceptor {
 **文件**：
 - `okrouter/src/main/java/com/anymore/okrouter/core/RouterResult.kt`
 - `okrouter/src/main/java/com/anymore/okrouter/core/internal/LaunchInterceptor.kt`
+- `okrouter/src/main/java/com/anymore/okrouter/core/internal/RouterDispatcher.kt`
 
 **现状**：`RouterResult` 仅涵盖成功路径（`Ok`、`NotFound`、`Intercepted`、`Custom`）。目标实例化失败、参数非法、系统拒绝启动 Service 等情况直接抛出异常，调用方无法通过返回值处理。
 
@@ -168,6 +171,8 @@ sealed class RouterResult(val value: String) {
 对应改动：
 - `LaunchInterceptor`：catch 目标创建和启动异常，返回 `Failed(cause)`
 - `RouterDispatcher`：URI 解析或参数校验失败时返回 `InvalidRequest(reason)`
+- `RouterDispatcher`：`getInterceptorInstance()` 如果拦截器实例化抛异常（如构造函数依赖注入未就绪），catch 并返回 `Failed(cause)`。当前异常会未经处理穿透到调用方
+- 所有 `Failed` 和 `InvalidRequest` 结果在生成时通过 `OkRouter.logger` 输出 error 级别日志，包含请求 URI 和异常/原因，确保线上可排查
 - 向后兼容：现有代码 match `Ok`/`NotFound`/`Intercepted` 的分支不受影响
 
 ---
@@ -184,7 +189,7 @@ sealed class RouterResult(val value: String) {
 | 2.2 稳定排序 | 同优先级拦截器顺序在不同构建、不同设备上一致 |
 | 2.3 Factory | 并发 100 线程获取单例拦截器，只创建一个实例 |
 | 2.4 初始化 | 未 init 调用 start 抛出明确 `IllegalStateException`；重复 init 输出警告 |
-| 3.1 错误模型 | 目标 Activity 不存在时返回 `Failed` 而非 crash；参数非法返回 `InvalidRequest` |
+| 3.1 错误模型 | 目标 Activity 不存在时返回 `Failed` 而非 crash；参数非法返回 `InvalidRequest`；拦截器实例化异常返回 `Failed` |
 
 ---
 
