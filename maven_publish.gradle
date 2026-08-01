@@ -1,39 +1,30 @@
-apply plugin: 'maven'
+apply plugin: 'maven-publish'
+
+// 从 Gradle 属性或环境变量读取 Maven 凭证，避免将私服密钥提交到仓库。
+def mavenUsername = project.findProperty("maven_username") ?: System.getenv("ALIYUN_USERNAME")
+def mavenPassword = project.findProperty("maven_password") ?: System.getenv("ALIYUN_PASSWORD")
+def releasesRepoUrl = project.findProperty("maven_release_url") ?: System.getenv("MAVEN_RELEASE_URL") ?: "https://packages.aliyun.com/maven/repository/2202395-release-jr0puW/"
+def snapshotsRepoUrl = project.findProperty("maven_snapshot_url") ?: System.getenv("MAVEN_SNAPSHOT_URL") ?: "https://packages.aliyun.com/maven/repository/2202395-snapshot-3OoSzj/"
 
 afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.findByName("release")
+                groupId = GROUP
+                artifactId = project.findProperty("artifactId")
+                version = VERSION
+            }
+        }
 
-//    task javadocJar(type: Jar, dependsOn: javadoc) {
-//        classifier = 'javadoc'
-//        from 'build/docs/javadoc'
-//    }
-
-    task androidSourcesJar(type: Jar) {
-        archiveClassifier.set('sources')
-        from android.sourceSets.main.java.srcDirs
-    }
-
-    artifacts {
-        archives androidSourcesJar
-    }
-
-    uploadArchives {
         repositories {
-            mavenDeployer {
-                repository(url: 'https://packages.aliyun.com/maven/repository/2202395-release-jr0puW/') {
-                    authentication(
-                            userName: "$maven_username",
-                            password: "$maven_password"
-                    )
+            maven {
+                name = "privateMaven"
+                url = VERSION.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+                credentials {
+                    username mavenUsername
+                    password mavenPassword
                 }
-                snapshotRepository(url: 'https://packages.aliyun.com/maven/repository/2202395-snapshot-3OoSzj/') {
-                    authentication(
-                            userName: "$maven_username",
-                            password: "$maven_password"
-                    )
-                }
-                pom.version = VERSION
-                pom.artifactId = artifactId
-                pom.groupId = GROUP
             }
         }
     }
