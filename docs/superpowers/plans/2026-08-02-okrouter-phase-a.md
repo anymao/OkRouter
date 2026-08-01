@@ -642,6 +642,13 @@ git commit -m "fix: OkRouter初始化生命周期——application改为nullable
 ```kotlin
 package com.anymore.okrouter.core
 
+/**
+ * 路由执行结果。
+ *
+ * **前向兼容提示**：本 sealed class 可能在未来版本中新增子类型。
+ * 使用 `when` 表达式时请始终包含 `else` 分支（或 Kotlin 1.7+ 的非穷尽 `when`），
+ * 以避免源码不兼容的编译错误。
+ */
 sealed class RouterResult(val value: String) {
     /** 路由成功 */
     object Ok : RouterResult("Ok")
