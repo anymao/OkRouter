@@ -48,6 +48,8 @@ internal object WareHouse {
     fun registerStableRouter(uri: String, meta: RouterMeta) {
         if (!stableRouters.containsKey(uri)) {
             stableRouters[uri] = meta
+        } else {
+            logger.w("稳定路由 URI \"$uri\" 重复注册，已保留首次注册的映射。请检查是否存在冲突的 @Router 注解。")
         }
     }
 

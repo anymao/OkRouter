@@ -7,6 +7,7 @@ import javassist.Loader
 import javassist.bytecode.AnnotationsAttribute
 import javassist.bytecode.annotation.*
 import javassist.bytecode.annotation.Annotation
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import java.io.File
 import java.io.FileInputStream
@@ -109,6 +110,31 @@ internal abstract class AbsOkRouterAction(
             interceptorElements, interceptorAlias
         )
         regexRouterElements.sortBy { it.priority }
+
+        // 检测稳定路由重复 URI
+        val stableUriSet = mutableSetOf<String>()
+        stableRouterElements.forEach { element ->
+            val uri = element.uri
+            if (!stableUriSet.add(uri)) {
+                throw GradleException(
+                    "路由冲突：稳定路由 URI \"$uri\" 重复注册。" +
+                        "请检查 @Router 注解中 scheme、host、path 的组合是否唯一。"
+                )
+            }
+        }
+
+        // 检测正则路由逐字重复
+        val regexUriSet = mutableSetOf<String>()
+        regexRouterElements.forEach { element ->
+            val uri = element.uri
+            if (!regexUriSet.add(uri)) {
+                throw GradleException(
+                    "路由冲突：正则路由 URI \"$uri\" 重复注册。" +
+                        "请检查 @Router 注解中 scheme、host、path 的组合是否唯一。"
+                )
+            }
+        }
+
         createRouterLoader(
             stableRouterElements, regexRouterElements,
             interceptorElements, interceptorAlias, targetDir
