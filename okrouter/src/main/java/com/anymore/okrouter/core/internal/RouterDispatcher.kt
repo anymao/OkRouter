@@ -1,6 +1,7 @@
 package com.anymore.okrouter.core.internal
 
 import android.content.Context
+import android.net.Uri
 import com.anymore.okrouter.OkRouter
 import com.anymore.okrouter.OkRouter.logger
 import com.anymore.okrouter.OkRouter.routerLostHandler
@@ -36,10 +37,10 @@ internal object RouterDispatcher {
                 IllegalStateException("路由重定向超过 $MAX_REDIRECT_COUNT 次")
             )
         }
-        val resolved = RouterResolver.resolveInternal(request)
+        val resolved = RouterResolver.resolveForExecution(request)
             ?: return notFoundResponse(context, request, originalUri, redirected)
         OkRouter.notifyResolved(resolved.publicMatch)
-        val visitKey = "${resolved.publicMatch.destination.uriPattern}|${request.uri}"
+        val visitKey = normalizedUri(request.uri)
         if (!visitedUris.add(visitKey)) {
             val routerContext = resolved.publicMatch.toContext(context, resolved.request)
             return finish(
@@ -54,7 +55,7 @@ internal object RouterDispatcher {
         val outcome = executeResolved(routerContext, resolved)
         if (outcome is RouterOutcome.Redirect) {
             val redirectRequest = try {
-                RouterRequest.Builder().uri(outcome.uri).build()
+                request.newBuilder().uri(outcome.uri).build()
             } catch (error: IllegalStateException) {
                 return finish(RouterOutcome.Failed(error), routerContext, originalUri, true)
             }
@@ -160,6 +161,13 @@ internal object RouterDispatcher {
     } else {
         response
     }
+
+    private fun normalizedUri(uri: String): String = Uri.parse(uri)
+        .buildUpon()
+        .clearQuery()
+        .fragment(null)
+        .build()
+        .toString()
 
     private fun RouterMatch.Found.toContext(
         context: Context,

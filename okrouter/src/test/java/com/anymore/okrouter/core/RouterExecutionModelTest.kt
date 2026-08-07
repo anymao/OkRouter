@@ -1,6 +1,11 @@
 package com.anymore.okrouter.core
 
 import android.content.Context
+import android.content.Intent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityOptionsCompat
 import com.anymore.okrouter.OkRouter
 import com.anymore.okrouter.warehouse.RouterMeta
 import com.anymore.okrouter.warehouse.RouterUri
@@ -117,6 +122,26 @@ class RouterExecutionModelTest {
             (result as RouterMatch.Found).uri
         )
         assertTrue(WareHouse.dynamicRouters.isEmpty())
+    }
+
+    @Test
+    fun `start regex route populates dynamic router cache`() {
+        WareHouse.registerRegexRouter(
+            RouterUri("okrouter", "android", "/profile/.*", 0),
+            RouterMeta(
+                RouterUri("okrouter", "android", "/profile/.*", 0),
+                RouterType.HANDLER,
+                CompletedV2Handler::class.java.name,
+                CompletedV2Handler::class.java,
+                emptyArray()
+            )
+        )
+
+        val response = OkRouter.build("okrouter://android/profile/42?tab=overview").start(appContext)
+
+        assertEquals(RouterResult.Ok, response.routerResult)
+        assertEquals(1, WareHouse.dynamicRouters.size)
+        assertTrue(WareHouse.dynamicRouters.containsKey("okrouter://android/profile/42"))
     }
 
     @Test
@@ -267,6 +292,29 @@ class RouterExecutionModelTest {
     }
 
     @Test
+    fun `redirect preserves request configuration for terminal handler`() {
+        val launcher = RecordingLauncher()
+        registerHandler("/entry", RedirectHandler::class.java)
+        registerHandler("/login", RequestCapturingHandler::class.java)
+        val request = OkRouter.build("okrouter://android/entry")
+            .requestCode(7)
+            .routerType(RouterType.HANDLER)
+            .header("trace-id", "trace-42")
+            .putString("source", "home")
+            .launcher(launcher)
+            .build()
+
+        val response = OkRouter.start(request, appContext)
+
+        assertEquals(RouterResult.Ok, response.routerResult)
+        assertEquals("home", RequestCapturingHandler.extras)
+        assertEquals("trace-42", RequestCapturingHandler.header)
+        assertEquals(7, RequestCapturingHandler.requestCode)
+        assertEquals(RouterType.HANDLER, RequestCapturingHandler.routerType)
+        assertSame(launcher, RequestCapturingHandler.launcher)
+    }
+
+    @Test
     fun `redirect loop becomes failed response`() {
         registerHandler("/a", RedirectToBHandler::class.java)
         registerHandler("/b", RedirectToAHandler::class.java)
@@ -274,6 +322,16 @@ class RouterExecutionModelTest {
         val response = OkRouter.build("okrouter://android/a").start(appContext)
 
         assertTrue(response.routerResult is RouterResult.Failed)
+    }
+
+    @Test
+    fun `redirect loop with changing query becomes failed response`() {
+        registerHandler("/query-loop", QueryChangingLoopHandler::class.java)
+
+        val response = OkRouter.build("okrouter://android/query-loop?step=0").start(appContext)
+
+        assertTrue(response.routerResult is RouterResult.Failed)
+        assertTrue((response.routerResult as RouterResult.Failed).cause.message!!.contains("循环"))
     }
 
     @Test
@@ -451,6 +509,41 @@ class RouterExecutionModelTest {
     class RedirectToAHandler : RouterHandlerV2 {
         override fun handle(context: RouterContext): RouterOutcome =
             RouterOutcome.Redirect("okrouter://android/a")
+    }
+
+    class QueryChangingLoopHandler : RouterHandlerV2 {
+        override fun handle(context: RouterContext): RouterOutcome {
+            val step = context.request.uri.substringAfter("step=").toInt()
+            return RouterOutcome.Redirect("okrouter://android/query-loop?step=${step + 1}")
+        }
+    }
+
+    class RequestCapturingHandler : RouterHandlerV2 {
+        override fun handle(context: RouterContext): RouterOutcome {
+            extras = context.request.extras.getString("source")
+            header = context.request.headers["trace-id"] as String
+            requestCode = context.request.requestCode
+            routerType = context.request.routerType
+            launcher = context.request.launcher
+            return RouterOutcome.Completed()
+        }
+
+        companion object {
+            var extras: String? = null
+            var header: String? = null
+            var requestCode: Int = -1
+            var routerType: RouterType = RouterType.UNDEFINED
+            var launcher: ActivityResultLauncher<Intent>? = null
+        }
+    }
+
+    class RecordingLauncher : ActivityResultLauncher<Intent>() {
+        override fun launch(input: Intent, options: ActivityOptionsCompat?) = Unit
+
+        override fun unregister() = Unit
+
+        override fun getContract(): ActivityResultContract<Intent, *> =
+            ActivityResultContracts.StartActivityForResult()
     }
 
     class RedirectUntilLimitHandler : RouterHandlerV2 {
