@@ -87,11 +87,11 @@ internal class OkRouterTaskAction(classpath: Collection<File>, targetDir: File, 
                         }
                     }
                     builder.addStatement(
-                        "\$T.registerStableRouter(\$S,new \$T(new \$T(\$S,\$S,\$S,\$L),\$T.\$L,\$S,\$T.class,\$L,\$L))",
+                        "\$T.registerStableRouter(\$S,new \$T(new \$T(\$S,\$S,\$S,\$L),\$T.\$L,\$S,\$T.class,\$L,\$L,\$S))",
                         Types.wareHouse, element.uri, Types.routerMeta, Types.routerUri,
                         element.scheme, element.host, element.path, element.priority,
                         Types.routerType, element.routerType.name, element.className,
-                        cn, interceptors, factory
+                        cn, interceptors, factory, element.desc
                     )
                 }
             }
@@ -167,12 +167,12 @@ internal class OkRouterTaskAction(classpath: Collection<File>, targetDir: File, 
                         }
                     }
                     builder.addStatement(
-                        "\$T.registerRegexRouter(new \$T(\$S,\$S,\$S,\$L),new \$T(new \$T(\$S,\$S,\$S,\$L),\$T.\$L,\$S,\$T.class,\$L,\$L))",
+                        "\$T.registerRegexRouter(new \$T(\$S,\$S,\$S,\$L),new \$T(new \$T(\$S,\$S,\$S,\$L),\$T.\$L,\$S,\$T.class,\$L,\$L,\$S))",
                         Types.wareHouse, Types.routerUri, element.scheme,
                         element.host, element.path, element.priority, Types.routerMeta,
                         Types.routerUri, element.scheme, element.host, element.path,
                         element.priority, Types.routerType, element.routerType.name,
-                        element.className, cn, interceptors, factory
+                        element.className, cn, interceptors, factory, element.desc
                     )
                 }
             }
