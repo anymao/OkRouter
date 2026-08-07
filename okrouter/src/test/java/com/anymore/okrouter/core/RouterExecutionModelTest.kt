@@ -309,6 +309,49 @@ class RouterExecutionModelTest {
         }
     }
 
+    @Test
+    fun `throwing observer logger keeps later observer and response intact`() {
+        val events = mutableListOf<String>()
+        val originalLogger = OkRouter.logger
+        val throwingObserver = object : RouterObserver {
+            override fun onFinished(context: RouterContext?, outcome: RouterOutcome) {
+                throw IllegalStateException("metrics unavailable")
+            }
+        }
+        val laterObserver = object : RouterObserver {
+            override fun onFinished(context: RouterContext?, outcome: RouterOutcome) {
+                events += "finished:${context?.request?.uri}:${outcome::class.simpleName}"
+            }
+        }
+        OkRouter.logger = object : Logger {
+            override fun v(tag: String, message: String) = Unit
+            override fun d(tag: String, message: String) = Unit
+            override fun i(tag: String, message: String) = Unit
+            override fun w(tag: String, message: String, throwable: Throwable?) = Unit
+            override fun e(tag: String, message: String, throwable: Throwable?) {
+                throw IllegalStateException("logger unavailable")
+            }
+        }
+        OkRouter.addObserver(throwingObserver)
+        OkRouter.addObserver(laterObserver)
+        try {
+            registerHandler("/observe-logger", CompletedV2Handler::class.java)
+
+            val response = OkRouter.build("okrouter://android/observe-logger").start(appContext)
+
+            assertEquals(RouterResult.Ok, response.routerResult)
+            assertEquals("v2-target", response.target)
+            assertEquals(
+                listOf("finished:okrouter://android/observe-logger:Completed"),
+                events
+            )
+        } finally {
+            OkRouter.removeObserver(throwingObserver)
+            OkRouter.removeObserver(laterObserver)
+            OkRouter.logger = originalLogger
+        }
+    }
+
     private fun assertLegacyResponse(path: String, result: RouterResult, target: String) {
         val response = OkRouter.build("okrouter://android$path").start(appContext)
 

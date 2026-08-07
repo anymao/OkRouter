@@ -59,14 +59,23 @@ object OkRouter {
     internal fun notifyResolved(match: RouterMatch) {
         observers.forEach { observer ->
             runCatching { observer.onResolved(match) }
-                .onFailure { error -> logger.e("RouterObserver.onResolved 执行失败", error) }
+                .onFailure { error -> logObserverFailure("RouterObserver.onResolved 执行失败", error) }
         }
     }
 
     internal fun notifyFinished(context: RouterContext?, outcome: RouterOutcome) {
         observers.forEach { observer ->
             runCatching { observer.onFinished(context, outcome) }
-                .onFailure { error -> logger.e("RouterObserver.onFinished 执行失败", error) }
+                .onFailure { error -> logObserverFailure("RouterObserver.onFinished 执行失败", error) }
+        }
+    }
+
+    /** 观察者和日志器均属于旁路能力，任何异常都不能改变路由结果。 */
+    private fun logObserverFailure(message: String, error: Throwable) {
+        try {
+            logger.e(message, error)
+        } catch (_: Throwable) {
+            // 日志器异常忽略，确保后续观察者与路由链继续执行。
         }
     }
 
