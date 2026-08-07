@@ -3,10 +3,12 @@ package com.anymore.okrouter
 import android.app.Application
 import android.content.Context
 import com.anymore.okrouter.core.Logger
+import com.anymore.okrouter.core.RouterMatch
 import com.anymore.okrouter.core.RouterLostHandler
 import com.anymore.okrouter.core.RouterRequest
 import com.anymore.okrouter.core.RouterResponse
 import com.anymore.okrouter.core.internal.RouterDispatcher
+import com.anymore.okrouter.core.internal.RouterResolver
 import com.anymore.okrouter.warehouse.OkRouterLoader
 
 /**
@@ -55,6 +57,25 @@ object OkRouter {
 
     @JvmStatic
     fun build(uri: String) = RouterRequest.Builder().uri(uri)
+
+    /**
+     * 仅解析 URI 的目标和参数，不初始化应用、不执行拦截器，也不发起跳转。
+     */
+    @JvmStatic
+    fun resolve(uri: String): RouterMatch {
+        if (uri.isBlank()) return RouterMatch.Invalid("URI 不能为空")
+        return try {
+            resolve(RouterRequest.Builder().uri(uri).build())
+        } catch (error: IllegalStateException) {
+            RouterMatch.Invalid(error.message ?: "URI 非法")
+        }
+    }
+
+    /**
+     * 仅解析已构造的请求，不初始化应用、不执行拦截器，也不发起跳转。
+     */
+    @JvmStatic
+    fun resolve(request: RouterRequest): RouterMatch = RouterResolver.resolve(request)
 
     @JvmOverloads
     @JvmStatic
