@@ -5,6 +5,8 @@ import java.util.LinkedHashMap
 
 sealed class RouterMatch {
     class Found internal constructor(
+        /** 本次解析输入的完整 URI 快照，保留 query，不等同于路由规则。 */
+        val uri: String,
         val destination: RouterDestination,
         parameters: Map<String, Any?>
     ) : RouterMatch() {
@@ -13,12 +15,12 @@ sealed class RouterMatch {
             Collections.unmodifiableMap(LinkedHashMap(parameters))
 
         override fun equals(other: Any?): Boolean =
-            other is Found && destination == other.destination && parameters == other.parameters
+            other is Found && uri == other.uri && destination == other.destination && parameters == other.parameters
 
-        override fun hashCode(): Int = 31 * destination.hashCode() + parameters.hashCode()
+        override fun hashCode(): Int = 31 * (31 * uri.hashCode() + destination.hashCode()) + parameters.hashCode()
 
         override fun toString(): String =
-            "Found(destination=$destination, parameters=$parameters)"
+            "Found(uri=$uri, destination=$destination, parameters=$parameters)"
     }
 
     data object NotFound : RouterMatch()

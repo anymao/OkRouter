@@ -19,7 +19,7 @@ internal object RouterResolver {
     fun resolveInternal(request: RouterRequest): ResolvedRoute? {
         val meta = WareHouse.findRouterMeta(request.uri) ?: return null
         val destination = RouterDestination(meta.uri.toString(), meta.routerType, meta.description)
-        val match = RouterMatch.Found(destination, queryParameters(request.uri))
+        val match = RouterMatch.Found(request.uri, destination, queryParameters(request.uri))
         return ResolvedRoute(match, request, meta)
     }
 

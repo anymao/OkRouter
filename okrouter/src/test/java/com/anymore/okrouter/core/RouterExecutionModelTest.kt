@@ -108,9 +108,13 @@ class RouterExecutionModelTest {
             testMeta("/profile/.*", RouterType.HANDLER, "用户资料")
         )
 
-        val result = OkRouter.resolve("okrouter://android/profile/42")
+        val result = OkRouter.resolve("okrouter://android/profile/42?tab=overview")
 
         assertTrue(result is RouterMatch.Found)
+        assertEquals(
+            "okrouter://android/profile/42?tab=overview",
+            (result as RouterMatch.Found).uri
+        )
         assertTrue(WareHouse.dynamicRouters.isEmpty())
     }
 
