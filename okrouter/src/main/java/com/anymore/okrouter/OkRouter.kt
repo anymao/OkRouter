@@ -59,7 +59,10 @@ object OkRouter {
     fun build(uri: String) = RouterRequest.Builder().uri(uri)
 
     /**
-     * 仅解析 URI 的目标和参数，不初始化应用、不执行拦截器，也不发起跳转。
+     * 仅解析 URI 的目标和 query 参数，不初始化应用、不执行拦截器，也不发起跳转。
+     *
+     * 空白 URI 返回 [RouterMatch.Invalid]；URI 有效但未注册匹配目标时返回
+     * [RouterMatch.NotFound]。
      */
     @JvmStatic
     fun resolve(uri: String): RouterMatch {
@@ -73,6 +76,7 @@ object OkRouter {
 
     /**
      * 仅解析已构造的请求，不初始化应用、不执行拦截器，也不发起跳转。
+     * 未匹配任何已注册路由时返回 [RouterMatch.NotFound]。
      */
     @JvmStatic
     fun resolve(request: RouterRequest): RouterMatch = RouterResolver.resolve(request)

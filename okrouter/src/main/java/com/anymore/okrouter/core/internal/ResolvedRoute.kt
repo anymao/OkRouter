@@ -1,6 +1,7 @@
 package com.anymore.okrouter.core.internal
 
 import com.anymore.okrouter.core.RouterMatch
+import com.anymore.okrouter.core.RouterRequest
 import com.anymore.okrouter.warehouse.RouterMeta
 
 /**
@@ -8,5 +9,6 @@ import com.anymore.okrouter.warehouse.RouterMeta
  */
 internal data class ResolvedRoute(
     val publicMatch: RouterMatch.Found,
+    val request: RouterRequest,
     val meta: RouterMeta
 )

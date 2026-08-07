@@ -9,6 +9,7 @@ import com.anymore.okrouter.warehouse.WareHouse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -86,13 +87,56 @@ class RouterExecutionModelTest {
         val found = result as RouterMatch.Found
         assertEquals(RouterType.HANDLER, found.destination.type)
         assertEquals("用户资料", found.destination.description)
-        assertEquals("42", found.parameters.getString("id"))
+        assertEquals("42", found.parameters["id"])
         assertEquals(0, RecordingHandler.callCount.get())
     }
 
     @Test
     fun `resolve blank uri is invalid instead of throwing`() {
         assertEquals(RouterMatch.Invalid("URI 不能为空"), OkRouter.resolve(""))
+    }
+
+    @Test
+    fun `resolve valid uri without registered route returns not found`() {
+        assertEquals(RouterMatch.NotFound, OkRouter.resolve("okrouter://android/missing"))
+    }
+
+    @Test
+    fun `resolve regex route does not populate dynamic router cache`() {
+        WareHouse.registerRegexRouter(
+            RouterUri("okrouter", "android", "/profile/.*", 0),
+            testMeta("/profile/.*", RouterType.HANDLER, "用户资料")
+        )
+
+        val result = OkRouter.resolve("okrouter://android/profile/42")
+
+        assertTrue(result is RouterMatch.Found)
+        assertTrue(WareHouse.dynamicRouters.isEmpty())
+    }
+
+    @Test
+    fun `resolve result parameters are immutable snapshots`() {
+        WareHouse.registerStableRouter(
+            "okrouter://android/profile",
+            testMeta("/profile", RouterType.HANDLER, "用户资料")
+        )
+        val request = RouterRequest.Builder()
+            .uri("okrouter://android/profile?id=42")
+            .build()
+
+        val result = OkRouter.resolve(request) as RouterMatch.Found
+        @Suppress("UNCHECKED_CAST")
+        val mutableParameters = result.parameters as MutableMap<String, Any?>
+
+        try {
+            mutableParameters["id"] = "changed"
+            fail("解析结果的参数不应可被外部修改")
+        } catch (_: UnsupportedOperationException) {
+            // 预期：公开参数是只读快照。
+        }
+        request.extras.putString("id", "changed-from-request")
+
+        assertEquals("42", result.parameters["id"])
     }
 
     private fun testMeta(path: String, type: RouterType, description: String): RouterMeta = RouterMeta(
