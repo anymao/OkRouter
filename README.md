@@ -210,7 +210,7 @@ class LoginGuardHandler : RouterHandlerV2 {
 }
 ```
 
-`RouterOutcome.Redirect` 会从新 URI 重新解析并执行，最终响应仍保留首次请求的 URI；最终到达 URI 记录在 `Extend.OKROUTER_FINAL_URI`。框架会检测重复 URI，并最多允许 8 次重定向；循环、超过上限或无效重定向均以 `RouterResult.Failed` 返回，而不会无限递归。
+`RouterOutcome.Redirect` 会从新 URI 重新解析并执行，最终响应仍保留首次请求的 URI；最终到达 URI 记录在 `Extend.OKROUTER_FINAL_URI`。重定向仅替换 URI：原请求的 headers、extras、requestCode、routerType 与 launcher 都会保留；若新 URI 的 query 与已有 extras 同名，已有 extras 优先，query 只补充缺失键。框架会检测重复 URI，并最多允许 8 次重定向；循环、超过上限或无效重定向均以 `RouterResult.Failed` 返回，而不会无限递归。
 
 新版 `RouterInterceptorV2` 同样可以返回 `RouterOutcome`。旧版 `RouterInterceptor` 与新版 Handler/拦截器可以混用，旧链路的 `RouterResponse` 信息会被保留。
 

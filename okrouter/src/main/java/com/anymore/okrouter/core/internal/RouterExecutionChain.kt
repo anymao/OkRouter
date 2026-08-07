@@ -9,6 +9,7 @@ import com.anymore.okrouter.core.RouterInterceptorV2
 import com.anymore.okrouter.core.RouterOutcome
 import com.anymore.okrouter.core.RouterRequest
 import com.anymore.okrouter.core.RouterResponse
+import com.anymore.okrouter.core.RouterResult
 
 /**
  * 同时执行新旧拦截器的内部链路。旧接口通过适配器接入，但仍保留其传递 Context 和请求的语义。
@@ -32,8 +33,11 @@ internal class RouterExecutionChain(
         return if (interceptor is RouterInterceptorV2) {
             interceptor.intercept(next)
         } else {
+            val legacyChain = LegacyChainAdapter(context, next)
+            val legacyResponse = interceptor.intercept(context.appContext, legacyChain)
+            legacyChain.redirectOutcome?.let { return it }
             RouterOutcomeMapper.fromLegacyResponse(
-                interceptor.intercept(context.appContext, LegacyChainAdapter(context, next)),
+                legacyResponse,
                 context
             )
         }
@@ -49,6 +53,9 @@ internal class RouterExecutionChain(
         private val next: RouterExecutionChain
     ) : RouterInterceptor.Chain {
 
+        var redirectOutcome: RouterOutcome.Redirect? = null
+            private set
+
         override fun request(): RouterRequest = context.request
 
         override fun proceed(context: Context, request: RouterRequest): RouterResponse {
@@ -60,7 +67,16 @@ internal class RouterExecutionChain(
                 this.context.executionScope
             )
             val nextChain = next.withContext(nextContext)
-            return nextChain.toResponse(nextChain.proceed())
+            val outcome = nextChain.proceed()
+            if (outcome is RouterOutcome.Redirect) {
+                redirectOutcome = outcome
+                return RouterResponse.Builder()
+                    .uri(request.uri)
+                    .routerType(nextContext.destination.type)
+                    .routerResult(RouterResult.Ok)
+                    .build()
+            }
+            return nextChain.toResponse(outcome)
         }
     }
 }

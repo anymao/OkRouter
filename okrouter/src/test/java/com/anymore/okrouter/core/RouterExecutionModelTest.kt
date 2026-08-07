@@ -228,6 +228,22 @@ class RouterExecutionModelTest {
     }
 
     @Test
+    fun `legacy interceptor proceeds to v2 redirect without losing redirect outcome`() {
+        registerHandler(
+            "/legacy-redirect",
+            RedirectHandler::class.java,
+            PassingLegacyInterceptor::class.java
+        )
+        registerHandler("/login", CompletedV2Handler::class.java)
+
+        val response = OkRouter.build("okrouter://android/legacy-redirect").start(appContext)
+
+        assertEquals(RouterResult.Ok, response.routerResult)
+        assertEquals("okrouter://android/legacy-redirect", response.uri)
+        assertEquals("okrouter://android/login", response.headers[Extend.OKROUTER_FINAL_URI])
+    }
+
+    @Test
     fun `missing handler becomes failed response`() {
         registerHandler("/missing-handler", String::class.java)
 
@@ -312,6 +328,23 @@ class RouterExecutionModelTest {
         assertEquals(7, RequestCapturingHandler.requestCode)
         assertEquals(RouterType.HANDLER, RequestCapturingHandler.routerType)
         assertSame(launcher, RequestCapturingHandler.launcher)
+    }
+
+    @Test
+    fun `redirect query supplements but does not overwrite original extras`() {
+        registerHandler("/redirect-query", RedirectWithQueryHandler::class.java)
+        registerHandler("/query-target", QueryCapturingHandler::class.java)
+        val request = OkRouter.build("okrouter://android/redirect-query")
+            .putString("source", "original")
+            .putString("carry", "keep")
+            .build()
+
+        val response = OkRouter.start(request, appContext)
+
+        assertEquals(RouterResult.Ok, response.routerResult)
+        assertEquals("original", QueryCapturingHandler.source)
+        assertEquals("overview", QueryCapturingHandler.tab)
+        assertEquals("keep", QueryCapturingHandler.carry)
     }
 
     @Test
@@ -501,6 +534,11 @@ class RouterExecutionModelTest {
             RouterOutcome.Redirect("okrouter://android/login")
     }
 
+    class RedirectWithQueryHandler : RouterHandlerV2 {
+        override fun handle(context: RouterContext): RouterOutcome =
+            RouterOutcome.Redirect("okrouter://android/query-target?source=redirect&tab=overview")
+    }
+
     class RedirectToBHandler : RouterHandlerV2 {
         override fun handle(context: RouterContext): RouterOutcome =
             RouterOutcome.Redirect("okrouter://android/b")
@@ -534,6 +572,21 @@ class RouterExecutionModelTest {
             var requestCode: Int = -1
             var routerType: RouterType = RouterType.UNDEFINED
             var launcher: ActivityResultLauncher<Intent>? = null
+        }
+    }
+
+    class QueryCapturingHandler : RouterHandlerV2 {
+        override fun handle(context: RouterContext): RouterOutcome {
+            source = context.request.extras.getString("source")
+            tab = context.request.extras.getString("tab")
+            carry = context.request.extras.getString("carry")
+            return RouterOutcome.Completed()
+        }
+
+        companion object {
+            var source: String? = null
+            var tab: String? = null
+            var carry: String? = null
         }
     }
 

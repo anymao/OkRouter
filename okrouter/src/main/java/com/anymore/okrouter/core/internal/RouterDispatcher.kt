@@ -55,7 +55,7 @@ internal object RouterDispatcher {
         val outcome = executeResolved(routerContext, resolved)
         if (outcome is RouterOutcome.Redirect) {
             val redirectRequest = try {
-                request.newBuilder().uri(outcome.uri).build()
+                request.withRedirectUri(outcome.uri)
             } catch (error: IllegalStateException) {
                 return finish(RouterOutcome.Failed(error), routerContext, originalUri, true)
             }
