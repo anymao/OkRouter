@@ -14,6 +14,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(RobolectricTestRunner::class)
@@ -143,6 +144,56 @@ class RouterExecutionModelTest {
         assertEquals("42", result.parameters["id"])
     }
 
+    @Test
+    fun `v2 handler completed outcome becomes ok response`() {
+        registerHandler("/v2", CompletedV2Handler::class.java)
+
+        val response = OkRouter.build("okrouter://android/v2").start(appContext)
+
+        assertEquals(RouterResult.Ok, response.routerResult)
+        assertEquals("v2-target", response.target)
+    }
+
+    @Test
+    fun `legacy handler remains compatible`() {
+        registerHandler("/legacy", RecordingHandler::class.java)
+
+        val response = OkRouter.build("okrouter://android/legacy").start(appContext)
+
+        assertEquals(RouterResult.Ok, response.routerResult)
+        assertEquals("OK", response.headers[Extend.OKROUTER_NOTE])
+        assertEquals(1, RecordingHandler.callCount.get())
+    }
+
+    @Test
+    fun `v2 interceptor can intercept without calling next`() {
+        registerHandler("/blocked", RecordingHandler::class.java, BlockingV2Interceptor::class.java)
+
+        val response = OkRouter.build("okrouter://android/blocked").start(appContext)
+
+        assertEquals(RouterResult.Intercepted, response.routerResult)
+        assertEquals(0, RecordingHandler.callCount.get())
+    }
+
+    @Test
+    fun `legacy interceptor remains compatible`() {
+        registerHandler("/legacy-interceptor", RecordingHandler::class.java, PassingLegacyInterceptor::class.java)
+
+        val response = OkRouter.build("okrouter://android/legacy-interceptor").start(appContext)
+
+        assertEquals(RouterResult.Ok, response.routerResult)
+        assertEquals(1, RecordingHandler.callCount.get())
+    }
+
+    @Test
+    fun `missing handler becomes failed response`() {
+        registerHandler("/missing-handler", String::class.java)
+
+        val response = OkRouter.build("okrouter://android/missing-handler").start(appContext)
+
+        assertTrue(response.routerResult is RouterResult.Failed)
+    }
+
     private fun testMeta(path: String, type: RouterType, description: String): RouterMeta = RouterMeta(
         RouterUri("okrouter", "android", path, 0),
         type,
@@ -153,7 +204,40 @@ class RouterExecutionModelTest {
         description
     )
 
-    private class RecordingHandler : RouterHandler {
+    private fun registerHandler(
+        path: String,
+        clazz: Class<*>,
+        vararg interceptors: Class<out RouterInterceptor>
+    ) {
+        WareHouse.registerStableRouter(
+            "okrouter://android$path",
+            RouterMeta(
+                RouterUri("okrouter", "android", path, 0),
+                RouterType.HANDLER,
+                clazz.name,
+                clazz,
+                arrayOf(*interceptors)
+            )
+        )
+    }
+
+    private val appContext: Context = RuntimeEnvironment.getApplication()
+
+    class CompletedV2Handler : RouterHandlerV2 {
+        override fun handle(context: RouterContext): RouterOutcome = RouterOutcome.Completed("v2-target")
+    }
+
+    class BlockingV2Interceptor : RouterInterceptorV2 {
+        override fun intercept(chain: RouterChain): RouterOutcome = RouterOutcome.Intercepted("blocked")
+    }
+
+    class PassingLegacyInterceptor : RouterInterceptor {
+        override fun intercept(context: Context, chain: RouterInterceptor.Chain): RouterResponse {
+            return chain.proceed(context, chain.request())
+        }
+    }
+
+    class RecordingHandler : RouterHandler {
         override fun handle(context: Context, request: RouterRequest) {
             callCount.incrementAndGet()
         }

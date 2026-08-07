@@ -5,7 +5,6 @@ import com.anymore.okrouter.OkRouter
 import com.anymore.okrouter.OkRouter.logger
 import com.anymore.okrouter.OkRouter.routerLostHandler
 import com.anymore.okrouter.core.*
-import com.anymore.okrouter.warehouse.RouterMeta
 import com.anymore.okrouter.warehouse.WareHouse
 import java.util.*
 
@@ -16,7 +15,7 @@ internal object RouterDispatcher {
 
     fun start(context: Context, request: RouterRequest): RouterResponse {
         logger.v("start for $request")
-        val meta = getRouteMeta(request)
+        val resolved = RouterResolver.resolveInternal(request)
             ?: return kotlin.run {
                 logger.d("router[${request.uri}] match no target")
                 logger.d("not found uri will be handled by ${routerLostHandler.javaClass.name}")
@@ -33,7 +32,7 @@ internal object RouterDispatcher {
             ics += it
         }
         //加载非全局拦截器
-        meta.interceptors.forEach {
+        resolved.meta.interceptors.forEach {
             ics += it
         }
         val interceptors = mutableListOf<RouterInterceptor>()
@@ -50,13 +49,15 @@ internal object RouterDispatcher {
         }
         interceptors.sortWith(PriorityRouterInterceptorComparator)
         //调用拦截器放在最后执行
-        interceptors += LaunchInterceptor(meta)
+        interceptors += LaunchInterceptor(resolved.meta)
 
-        val chain = RealRouterChain(request, Collections.unmodifiableList(interceptors), 0)
-        return chain.proceed(context, request)
-    }
-
-    private fun getRouteMeta(request: RouterRequest): RouterMeta? {
-        return WareHouse.getMatchRouterMeta(request.uri)
+        val routerContext = RouterContext(
+            context,
+            resolved.request,
+            resolved.publicMatch.destination,
+            RouterOptions.DEFAULT
+        )
+        val chain = RouterExecutionChain(routerContext, Collections.unmodifiableList(interceptors))
+        return chain.proceed().toResponse(routerContext)
     }
 }
