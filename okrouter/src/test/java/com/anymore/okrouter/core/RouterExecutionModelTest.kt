@@ -166,6 +166,18 @@ class RouterExecutionModelTest {
     }
 
     @Test
+    fun `legacy builder start and dispatcher start return same result`() {
+        registerHandler("/compat", CompletedV2Handler::class.java)
+        val request = RouterRequest.Builder().uri("okrouter://android/compat").build()
+
+        val viaBuilder = OkRouter.build("okrouter://android/compat").start(appContext)
+        val viaDispatcher = OkRouter.start(request, appContext)
+
+        assertEquals(viaBuilder.routerResult, viaDispatcher.routerResult)
+        assertEquals(viaBuilder.routerType, viaDispatcher.routerType)
+    }
+
+    @Test
     fun `v2 interceptor can intercept without calling next`() {
         registerHandler("/blocked", RecordingHandler::class.java, BlockingV2Interceptor::class.java)
 

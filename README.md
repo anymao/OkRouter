@@ -176,6 +176,48 @@ OkRouter.build("/biz1".toRoute())
 - `getIntCompatibly` / `getStringCompatibly` 等
 - `RouterResponse.getView()` / `requireView()`（目前 `requireFragment()` 返回类型存在拼写问题，仅用于本地兼容历史实现）
 
+### 5. 路由解析与新版执行模型
+
+`OkRouter.build(String)` 和字符串路由入口**未弃用**，现有调用可以继续保持不变。新版 API 在此基础上增加了可预检的解析结果和结构化执行结果，不引入 `RouteSpec` 等类型化路由声明（该能力仍保留为后续 TODO）。
+
+#### 解析（无副作用）
+
+`resolve` 只根据当前已注册路由解析 URI、目标信息及 query 参数；它不会初始化应用、执行拦截器、调用 Handler，也不会发起页面跳转。因此可以安全地用于预检、埋点和展示路由信息：
+
+```kotlin
+when (val match = OkRouter.resolve("okrouter://android/profile?id=42")) {
+    is RouterMatch.Found -> OkRouter.build(match.uri).start(context)
+    RouterMatch.NotFound -> Unit
+    is RouterMatch.Invalid -> error(match.reason)
+}
+```
+
+空白或非法 URI 返回 `RouterMatch.Invalid`，合法但没有已注册目标的 URI 返回 `RouterMatch.NotFound`。解析结果中的参数为只读快照；正则路由的解析也不会写入运行时匹配缓存。
+
+#### `RouterHandlerV2` 与重定向
+
+旧版 `RouterHandler` 仍可直接使用，并会按原有链路执行。需要向调用方表达完成、拦截、失败或重定向时，可实现 `RouterHandlerV2`：
+
+```kotlin
+class LoginGuardHandler : RouterHandlerV2 {
+    override fun handle(context: RouterContext): RouterOutcome {
+        return if (isSignedIn()) {
+            RouterOutcome.Completed()
+        } else {
+            RouterOutcome.Redirect("okrouter://android/login")
+        }
+    }
+}
+```
+
+`RouterOutcome.Redirect` 会从新 URI 重新解析并执行，最终响应仍保留首次请求的 URI；最终到达 URI 记录在 `Extend.OKROUTER_FINAL_URI`。框架会检测重复 URI，并最多允许 8 次重定向；循环、超过上限或无效重定向均以 `RouterResult.Failed` 返回，而不会无限递归。
+
+新版 `RouterInterceptorV2` 同样可以返回 `RouterOutcome`。旧版 `RouterInterceptor` 与新版 Handler/拦截器可以混用，旧链路的 `RouterResponse` 信息会被保留。
+
+#### 旁路观察
+
+可通过 `OkRouter.addObserver` 注册 `RouterObserver`，在 `onResolved` 接收解析结果，在 `onFinished` 接收执行结束的上下文和 `RouterOutcome`。观察者适合日志与指标等旁路工作；观察者或日志器抛出的异常会被框架隔离，不会影响路由执行或后续观察者。调用 `OkRouter.removeObserver` 可取消注册。
+
 ## 四、示例接入
 
 ### 1. App 模块接入插件
