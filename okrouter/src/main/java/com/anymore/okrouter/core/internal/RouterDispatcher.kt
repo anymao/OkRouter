@@ -27,7 +27,8 @@ internal object RouterDispatcher {
         visitedUris: LinkedHashSet<String>,
         redirected: Boolean
     ): RouterResponse {
-        if (visitedUris.size >= MAX_REDIRECT_COUNT) {
+        // 初始路由不属于重定向次数；已访问路由数超过上限时才拒绝下一跳。
+        if (visitedUris.size > MAX_REDIRECT_COUNT) {
             return finishWithoutContext(
                 request,
                 originalUri,

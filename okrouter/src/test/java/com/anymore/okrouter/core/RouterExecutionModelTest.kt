@@ -167,14 +167,19 @@ class RouterExecutionModelTest {
 
     @Test
     fun `legacy builder start and dispatcher start return same result`() {
-        registerHandler("/compat", CompletedV2Handler::class.java)
+        registerHandler("/compat", RecordingHandler::class.java)
         val request = RouterRequest.Builder().uri("okrouter://android/compat").build()
 
         val viaBuilder = OkRouter.build("okrouter://android/compat").start(appContext)
+        assertEquals(1, RecordingHandler.callCount.get())
         val viaDispatcher = OkRouter.start(request, appContext)
 
         assertEquals(viaBuilder.routerResult, viaDispatcher.routerResult)
         assertEquals(viaBuilder.routerType, viaDispatcher.routerType)
+        assertEquals(viaBuilder.uri, viaDispatcher.uri)
+        assertEquals(viaBuilder.target, viaDispatcher.target)
+        assertEquals(viaBuilder.headers, viaDispatcher.headers)
+        assertEquals(2, RecordingHandler.callCount.get())
     }
 
     @Test
@@ -280,6 +285,33 @@ class RouterExecutionModelTest {
         val response = OkRouter.build("okrouter://android/0").start(appContext)
 
         assertTrue(response.routerResult is RouterResult.Failed)
+    }
+
+    @Test
+    fun `eight redirects reach the terminal route`() {
+        (0..8).forEach { number ->
+            registerHandler("/$number", RedirectAtLimitHandler::class.java)
+        }
+
+        val response = OkRouter.build("okrouter://android/0").start(appContext)
+
+        assertEquals(RouterResult.Ok, response.routerResult)
+        assertEquals("redirect-target-8", response.target)
+        assertEquals("okrouter://android/0", response.uri)
+        assertEquals("okrouter://android/8", response.headers[Extend.OKROUTER_FINAL_URI])
+    }
+
+    @Test
+    fun `ninth redirect is rejected before terminal route`() {
+        (0..9).forEach { number ->
+            registerHandler("/$number", RedirectAtNineHandler::class.java)
+        }
+
+        val response = OkRouter.build("okrouter://android/0").start(appContext)
+
+        assertTrue(response.routerResult is RouterResult.Failed)
+        assertEquals("okrouter://android/0", response.uri)
+        assertEquals("okrouter://android/9", response.headers[Extend.OKROUTER_FINAL_URI])
     }
 
     @Test
@@ -425,6 +457,28 @@ class RouterExecutionModelTest {
         override fun handle(context: RouterContext): RouterOutcome {
             val current = context.request.uri.substringAfterLast('/').toInt()
             return RouterOutcome.Redirect("okrouter://android/${current + 1}")
+        }
+    }
+
+    class RedirectAtLimitHandler : RouterHandlerV2 {
+        override fun handle(context: RouterContext): RouterOutcome {
+            val current = context.request.uri.substringAfterLast('/').toInt()
+            return if (current == 8) {
+                RouterOutcome.Completed("redirect-target-$current")
+            } else {
+                RouterOutcome.Redirect("okrouter://android/${current + 1}")
+            }
+        }
+    }
+
+    class RedirectAtNineHandler : RouterHandlerV2 {
+        override fun handle(context: RouterContext): RouterOutcome {
+            val current = context.request.uri.substringAfterLast('/').toInt()
+            return if (current == 9) {
+                RouterOutcome.Completed("redirect-target-9")
+            } else {
+                RouterOutcome.Redirect("okrouter://android/${current + 1}")
+            }
         }
     }
 
