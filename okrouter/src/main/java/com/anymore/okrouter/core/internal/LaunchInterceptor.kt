@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.view.View
 import androidx.fragment.app.Fragment
+import com.anymore.okrouter.OkRouter
 import com.anymore.okrouter.core.*
 import com.anymore.okrouter.core.Extend.OKROUTER_NOTE
 import com.anymore.okrouter.warehouse.RouterMeta
@@ -17,13 +18,29 @@ import com.anymore.okrouter.warehouse.RouterMeta
 internal class LaunchInterceptor(private val meta: RouterMeta) : RouterInterceptor {
 
     override fun intercept(context: Context, chain: RouterInterceptor.Chain): RouterResponse {
-        return when (meta.routerType) {
-            RouterType.ACTIVITY -> startActivity(context, chain.request(), meta)
-            RouterType.FRAGMENT -> startFragment(context, chain.request(), meta)
-            RouterType.VIEW -> startView(context, chain.request(), meta)
-            RouterType.SERVICE -> startService(context, chain.request(), meta)
-            RouterType.HANDLER -> startHandler(context, chain.request(), meta)
-            RouterType.UNDEFINED -> throw IllegalStateException("meta.routerType could not be RouterType.UNDEFINED")
+        return try {
+            when (meta.routerType) {
+                RouterType.ACTIVITY -> startActivity(context, chain.request(), meta)
+                RouterType.FRAGMENT -> startFragment(context, chain.request(), meta)
+                RouterType.VIEW -> startView(context, chain.request(), meta)
+                RouterType.SERVICE -> startService(context, chain.request(), meta)
+                RouterType.HANDLER -> startHandler(context, chain.request(), meta)
+                RouterType.UNDEFINED -> {
+                    OkRouter.logger.e("LaunchInterceptor: routerType is UNDEFINED for ${meta.uri}")
+                    RouterResponse.Builder()
+                        .uri(chain.request().uri)
+                        .routerType(meta.routerType)
+                        .routerResult(RouterResult.Failed(IllegalStateException("routerType 不能为 UNDEFINED")))
+                        .build()
+                }
+            }
+        } catch (e: Exception) {
+            OkRouter.logger.e("LaunchInterceptor: 目标启动失败 uri=${chain.request().uri}, type=${meta.routerType}", e)
+            RouterResponse.Builder()
+                .uri(chain.request().uri)
+                .routerType(meta.routerType)
+                .routerResult(RouterResult.Failed(e))
+                .build()
         }
     }
 

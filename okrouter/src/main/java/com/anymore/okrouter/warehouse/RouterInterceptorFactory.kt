@@ -14,7 +14,10 @@ abstract class RouterInterceptorFactory(private val singleton: Boolean = false) 
 
     fun create(): RouterInterceptor {
         return if (singleton) {
-            instance ?: newInstance().also { instance = it }
+            // double-check locking：@Volatile 保证可见性，synchronized 保证并发下只创建一次
+            instance ?: synchronized(this) {
+                instance ?: newInstance().also { instance = it }
+            }
         } else {
             newInstance()
         }
