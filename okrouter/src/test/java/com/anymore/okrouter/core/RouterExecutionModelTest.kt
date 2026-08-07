@@ -237,6 +237,78 @@ class RouterExecutionModelTest {
         assertEquals("v2-target", response.target)
     }
 
+    @Test
+    fun `redirect reaches terminal handler and preserves original response uri`() {
+        registerHandler("/entry", RedirectHandler::class.java)
+        registerHandler("/login", CompletedV2Handler::class.java)
+
+        val response = OkRouter.build("okrouter://android/entry").start(appContext)
+
+        assertEquals(RouterResult.Ok, response.routerResult)
+        assertEquals("okrouter://android/entry", response.uri)
+        assertEquals("okrouter://android/login", response.headers[Extend.OKROUTER_FINAL_URI])
+    }
+
+    @Test
+    fun `redirect loop becomes failed response`() {
+        registerHandler("/a", RedirectToBHandler::class.java)
+        registerHandler("/b", RedirectToAHandler::class.java)
+
+        val response = OkRouter.build("okrouter://android/a").start(appContext)
+
+        assertTrue(response.routerResult is RouterResult.Failed)
+    }
+
+    @Test
+    fun `redirect exceeding maximum count becomes failed response`() {
+        (0..8).forEach { number ->
+            registerHandler("/$number", RedirectUntilLimitHandler::class.java)
+        }
+
+        val response = OkRouter.build("okrouter://android/0").start(appContext)
+
+        assertTrue(response.routerResult is RouterResult.Failed)
+    }
+
+    @Test
+    fun `observers receive resolved before finished and failures are isolated`() {
+        val events = mutableListOf<String>()
+        val recordingObserver = object : RouterObserver {
+            override fun onResolved(match: RouterMatch) {
+                val found = match as RouterMatch.Found
+                events += "resolved:${found.uri}"
+            }
+
+            override fun onFinished(context: RouterContext?, outcome: RouterOutcome) {
+                events += "finished:${context?.request?.uri}:${outcome::class.simpleName}"
+            }
+        }
+        val throwingObserver = object : RouterObserver {
+            override fun onFinished(context: RouterContext?, outcome: RouterOutcome) {
+                throw IllegalStateException("metrics unavailable")
+            }
+        }
+        OkRouter.addObserver(recordingObserver)
+        OkRouter.addObserver(throwingObserver)
+        try {
+            registerHandler("/observe", CompletedV2Handler::class.java)
+
+            val response = OkRouter.build("okrouter://android/observe").start(appContext)
+
+            assertEquals(RouterResult.Ok, response.routerResult)
+            assertEquals(
+                listOf(
+                    "resolved:okrouter://android/observe",
+                    "finished:okrouter://android/observe:Completed"
+                ),
+                events
+            )
+        } finally {
+            OkRouter.removeObserver(recordingObserver)
+            OkRouter.removeObserver(throwingObserver)
+        }
+    }
+
     private fun assertLegacyResponse(path: String, result: RouterResult, target: String) {
         val response = OkRouter.build("okrouter://android$path").start(appContext)
 
@@ -277,6 +349,28 @@ class RouterExecutionModelTest {
 
     class CompletedV2Handler : RouterHandlerV2 {
         override fun handle(context: RouterContext): RouterOutcome = RouterOutcome.Completed("v2-target")
+    }
+
+    class RedirectHandler : RouterHandlerV2 {
+        override fun handle(context: RouterContext): RouterOutcome =
+            RouterOutcome.Redirect("okrouter://android/login")
+    }
+
+    class RedirectToBHandler : RouterHandlerV2 {
+        override fun handle(context: RouterContext): RouterOutcome =
+            RouterOutcome.Redirect("okrouter://android/b")
+    }
+
+    class RedirectToAHandler : RouterHandlerV2 {
+        override fun handle(context: RouterContext): RouterOutcome =
+            RouterOutcome.Redirect("okrouter://android/a")
+    }
+
+    class RedirectUntilLimitHandler : RouterHandlerV2 {
+        override fun handle(context: RouterContext): RouterOutcome {
+            val current = context.request.uri.substringAfterLast('/').toInt()
+            return RouterOutcome.Redirect("okrouter://android/${current + 1}")
+        }
     }
 
     class BlockingV2Interceptor : RouterInterceptorV2 {

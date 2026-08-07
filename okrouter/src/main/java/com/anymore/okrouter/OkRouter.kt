@@ -4,12 +4,16 @@ import android.app.Application
 import android.content.Context
 import com.anymore.okrouter.core.Logger
 import com.anymore.okrouter.core.RouterMatch
+import com.anymore.okrouter.core.RouterObserver
+import com.anymore.okrouter.core.RouterOutcome
 import com.anymore.okrouter.core.RouterLostHandler
 import com.anymore.okrouter.core.RouterRequest
 import com.anymore.okrouter.core.RouterResponse
+import com.anymore.okrouter.core.RouterContext
 import com.anymore.okrouter.core.internal.RouterDispatcher
 import com.anymore.okrouter.core.internal.RouterResolver
 import com.anymore.okrouter.warehouse.OkRouterLoader
+import java.util.concurrent.CopyOnWriteArraySet
 
 /**
  * Created by anymore on 2023/6/5.
@@ -37,6 +41,34 @@ object OkRouter {
 
     @JvmStatic
     var logger: Logger = Logger.Default
+
+    private val observers = CopyOnWriteArraySet<RouterObserver>()
+
+    /** 注册路由观察者。重复注册同一实例会被忽略。 */
+    @JvmStatic
+    fun addObserver(observer: RouterObserver) {
+        observers += observer
+    }
+
+    /** 移除已注册的路由观察者。 */
+    @JvmStatic
+    fun removeObserver(observer: RouterObserver) {
+        observers -= observer
+    }
+
+    internal fun notifyResolved(match: RouterMatch) {
+        observers.forEach { observer ->
+            runCatching { observer.onResolved(match) }
+                .onFailure { error -> logger.e("RouterObserver.onResolved 执行失败", error) }
+        }
+    }
+
+    internal fun notifyFinished(context: RouterContext?, outcome: RouterOutcome) {
+        observers.forEach { observer ->
+            runCatching { observer.onFinished(context, outcome) }
+                .onFailure { error -> logger.e("RouterObserver.onFinished 执行失败", error) }
+        }
+    }
 
     @JvmStatic
     fun init(context: Context) {
