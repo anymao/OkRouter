@@ -194,6 +194,58 @@ class RouterExecutionModelTest {
         assertTrue(response.routerResult is RouterResult.Failed)
     }
 
+    @Test
+    fun `legacy response remains lossless after v2 rewrites proceeded outcome`() {
+        registerHandler(
+            "/legacy-not-found",
+            RecordingHandler::class.java,
+            ARewritingV2Interceptor::class.java,
+            ZNotFoundLegacyInterceptor::class.java
+        )
+        registerHandler(
+            "/legacy-invalid",
+            RecordingHandler::class.java,
+            ARewritingV2Interceptor::class.java,
+            ZInvalidLegacyInterceptor::class.java
+        )
+        registerHandler(
+            "/legacy-custom",
+            RecordingHandler::class.java,
+            ARewritingV2Interceptor::class.java,
+            ZCustomLegacyInterceptor::class.java
+        )
+
+        assertLegacyResponse(
+            "/legacy-not-found",
+            RouterResult.NotFound,
+            "not-found-target"
+        )
+        assertLegacyResponse(
+            "/legacy-invalid",
+            RouterResult.InvalidRequest("legacy-invalid"),
+            "invalid-target"
+        )
+        assertLegacyResponse(
+            "/legacy-custom",
+            RouterResult.Custom("legacy-custom"),
+            "custom-target"
+        )
+
+        registerHandler("/after-legacy", CompletedV2Handler::class.java)
+        val response = OkRouter.build("okrouter://android/after-legacy").start(appContext)
+        assertEquals(RouterResult.Ok, response.routerResult)
+        assertEquals("v2-target", response.target)
+    }
+
+    private fun assertLegacyResponse(path: String, result: RouterResult, target: String) {
+        val response = OkRouter.build("okrouter://android$path").start(appContext)
+
+        assertEquals(result::class, response.routerResult::class)
+        assertEquals(result.value, response.routerResult.value)
+        assertEquals("legacy-$target", response.headers["legacy-header"])
+        assertEquals(target, response.target)
+    }
+
     private fun testMeta(path: String, type: RouterType, description: String): RouterMeta = RouterMeta(
         RouterUri("okrouter", "android", path, 0),
         type,
@@ -234,6 +286,36 @@ class RouterExecutionModelTest {
     class PassingLegacyInterceptor : RouterInterceptor {
         override fun intercept(context: Context, chain: RouterInterceptor.Chain): RouterResponse {
             return chain.proceed(context, chain.request())
+        }
+    }
+
+    class ARewritingV2Interceptor : RouterInterceptorV2 {
+        override fun intercept(chain: RouterChain): RouterOutcome {
+            chain.proceed()
+            return RouterOutcome.Completed("rewritten-target")
+        }
+    }
+
+    class ZNotFoundLegacyInterceptor : FixedLegacyResponseInterceptor(RouterResult.NotFound, "not-found-target")
+
+    class ZInvalidLegacyInterceptor :
+        FixedLegacyResponseInterceptor(RouterResult.InvalidRequest("legacy-invalid"), "invalid-target")
+
+    class ZCustomLegacyInterceptor :
+        FixedLegacyResponseInterceptor(RouterResult.Custom("legacy-custom"), "custom-target")
+
+    abstract class FixedLegacyResponseInterceptor(
+        private val result: RouterResult,
+        private val target: String
+    ) : RouterInterceptor {
+        override fun intercept(context: Context, chain: RouterInterceptor.Chain): RouterResponse {
+            return RouterResponse.Builder()
+                .uri(chain.request().uri)
+                .routerType(RouterType.HANDLER)
+                .routerResult(result)
+                .header("legacy-header", "legacy-$target")
+                .target(target)
+                .build()
         }
     }
 

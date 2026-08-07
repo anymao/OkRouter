@@ -58,6 +58,6 @@ internal object RouterDispatcher {
             RouterOptions.DEFAULT
         )
         val chain = RouterExecutionChain(routerContext, Collections.unmodifiableList(interceptors))
-        return chain.proceed().toResponse(routerContext)
+        return chain.toResponse(chain.proceed())
     }
 }

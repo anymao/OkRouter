@@ -33,13 +33,16 @@ internal class RouterExecutionChain(
             interceptor.intercept(next)
         } else {
             RouterOutcomeMapper.fromLegacyResponse(
-                interceptor.intercept(context.appContext, LegacyChainAdapter(context, next))
+                interceptor.intercept(context.appContext, LegacyChainAdapter(context, next)),
+                context
             )
         }
     }
 
     private fun withContext(context: RouterContext): RouterExecutionChain =
         RouterExecutionChain(context, interceptors, index)
+
+    fun toResponse(outcome: RouterOutcome): RouterResponse = outcome.toResponse(context)
 
     private class LegacyChainAdapter(
         private val context: RouterContext,
@@ -53,9 +56,11 @@ internal class RouterExecutionChain(
                 context,
                 request,
                 this.context.destination,
-                this.context.options
+                this.context.options,
+                this.context.executionScope
             )
-            return next.withContext(nextContext).proceed().toResponse(nextContext)
+            val nextChain = next.withContext(nextContext)
+            return nextChain.toResponse(nextChain.proceed())
         }
     }
 }

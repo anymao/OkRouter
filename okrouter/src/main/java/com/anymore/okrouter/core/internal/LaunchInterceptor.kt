@@ -34,16 +34,20 @@ internal class LaunchInterceptor(private val meta: RouterMeta) : RouterIntercept
         return try {
             when (meta.routerType) {
                 RouterType.ACTIVITY -> RouterOutcomeMapper.fromLegacyResponse(
-                    startActivity(context.appContext, context.request, meta)
+                    startActivity(context.appContext, context.request, meta),
+                    context
                 )
                 RouterType.FRAGMENT -> RouterOutcomeMapper.fromLegacyResponse(
-                    startFragment(context.appContext, context.request, meta)
+                    startFragment(context.appContext, context.request, meta),
+                    context
                 )
                 RouterType.VIEW -> RouterOutcomeMapper.fromLegacyResponse(
-                    startView(context.appContext, context.request, meta)
+                    startView(context.appContext, context.request, meta),
+                    context
                 )
                 RouterType.SERVICE -> RouterOutcomeMapper.fromLegacyResponse(
-                    startService(context.appContext, context.request, meta)
+                    startService(context.appContext, context.request, meta),
+                    context
                 )
                 RouterType.HANDLER -> startHandler(context, meta)
                 RouterType.UNDEFINED -> {
@@ -81,7 +85,8 @@ internal class LaunchInterceptor(private val meta: RouterMeta) : RouterIntercept
                     .routerType(meta.routerType)
                     .routerResult(RouterResult.Ok)
                     .header(OKROUTER_NOTE, "OK")
-                    .build()
+                    .build(),
+                context
             )
         }
     }
