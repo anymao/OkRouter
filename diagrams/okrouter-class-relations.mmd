@@ -1,0 +1,23 @@
+graph TD
+    App["Application"] --> Init["OkRouter.init"]
+    App --> Build["OkRouter.build / resolve / start"]
+    RouterAnn["@Router"] --> Plugin["OkRouter Gradle Plugin"]
+    InterceptorAnn["@Interceptor"] --> Plugin
+    Plugin --> Loader["生成 OkRouterLoader"]
+    Loader --> Warehouse["WareHouse 路由表 / 拦截器表"]
+    Init --> Loader
+    Build --> Request["RouterRequest.Builder"]
+    Request --> Dispatcher["RouterDispatcher"]
+    Build --> Resolver["RouterResolver（resolve）"]
+    Resolver --> Warehouse
+    Dispatcher --> Warehouse
+    Dispatcher --> Chain["RouterExecutionChain"]
+    Chain --> LegacyI["RouterInterceptor"]
+    Chain --> V2I["RouterInterceptorV2"]
+    Chain --> Launch["LaunchInterceptor"]
+    Launch --> LegacyH["RouterHandler"]
+    Launch --> V2H["RouterHandlerV2"]
+    V2I --> Outcome["RouterOutcome"]
+    V2H --> Outcome
+    Dispatcher --> Response["RouterResponse / RouterResult"]
+    Build --> Observer["RouterObserver"]
