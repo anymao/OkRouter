@@ -1,0 +1,14 @@
+flowchart LR
+    A["调用方"] --> B["RouterDispatcher"]
+    B --> C{"路由命中？"}
+    C -->|"是"| D["现有执行链"]
+    C -->|"否"| E["NotFoundEvent<br/>request · URI · traceId"]
+    E --> H["RouterLostHandler"]
+    H --> I{"处理结果"}
+    I -->|"NotHandled"| L["RouterResult.NotFound"]
+    I -->|"Redirect"| J["统一重定向保护"]
+    J --> B
+    I -->|"Failed"| K["RouterResult.Failed"]
+    D --> M["onFinished + RouterResponse"]
+    K --> M
+    L --> M
