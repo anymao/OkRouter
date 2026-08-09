@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    participant C as 调用方
+    participant D as RouterDispatcher
+    participant R as RouterResolver
+    participant O as RouterObserver
+    participant H as RouterLostHandler
+    participant F as 兜底路由
+
+    C->>D: start(未知 URI)
+    D->>R: resolve(request)
+    R-->>D: NotFound
+    D->>O: onEvent(NotFoundDetected)
+    D->>H: handle(lostContext)
+    alt 未恢复
+        H-->>D: NotHandled
+        D->>O: onFinished(NotFoundEvent)
+        D-->>C: RouterResult.NotFound
+    else 以兜底 URI 恢复
+        H-->>D: Redirect(/404)
+        D->>D: 校验重定向次数与环路
+        D->>F: 执行 /404
+        F-->>D: Completed
+        D->>O: onFinished(Completed, traceId)
+        D-->>C: RouterResult.Ok（含 finalUri）
+    else 兜底处理失败
+        H-->>D: Failed(cause)
+        D->>O: onFinished(FailedEvent)
+        D-->>C: RouterResult.Failed
+    end

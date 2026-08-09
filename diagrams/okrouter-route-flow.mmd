@@ -1,0 +1,19 @@
+graph TD
+    A["调用 build(uri).start(context)"] --> B["构建 RouterRequest<br/>解析 query 到 extras"]
+    B --> C["RouterDispatcher"]
+    C --> D["WareHouse 匹配<br/>稳定 → 动态缓存 → 正则"]
+    D -->|未命中| E["RouterLostHandler<br/>返回 NotFound"]
+    D -->|命中| F["通知 onResolved<br/>创建 RouterContext"]
+    F --> G["合并全局与局部拦截器<br/>按 priority 排序"]
+    G --> H["RouterExecutionChain<br/>旧 / V2 拦截器混排"]
+    H --> I["LaunchInterceptor"]
+    I --> J{"目标类型"}
+    J -->|Activity / Service| K["Android 启动"]
+    J -->|Fragment / View| L["创建实例并写入 target"]
+    J -->|Handler| M["旧 Handler 或 V2 Handler"]
+    K --> N["RouterOutcome / 旧 Response"]
+    L --> N
+    M --> N
+    N -->|Redirect| O["复制请求，仅替换 URI<br/>循环与 8 次上限检查"]
+    O --> C
+    N -->|终态| P["装配 RouterResponse<br/>通知 onFinished"]

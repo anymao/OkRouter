@@ -37,6 +37,18 @@ class RouterRequest private constructor(
             launcher
         )
 
+    /**
+     * 以新 URI 创建重定向请求，同时保留发起请求时已显式提供的配置。
+     *
+     * 新 URI 的 query 仅补充原 extras 中不存在的键；同名键始终保留原 extras 的值。
+     */
+    internal fun withRedirectUri(uri: String): RouterRequest {
+        val redirectedRequest = newBuilder().uri(uri).build()
+        redirectedRequest.extras.putAll(extras)
+        redirectedRequest.extras.putString(Extend.OKROUTER_RAW_URI, uri)
+        return redirectedRequest
+    }
+
     override fun toString(): String {
         return "RouterRequest(requestCode=$requestCode, uri='$uri', headers=$headers, extras=$extras, routerType=$routerType)"
     }

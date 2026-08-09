@@ -15,43 +15,59 @@ import com.anymore.okrouter.warehouse.RouterMeta
  * Created by anymore on 2023/6/6.
  */
 @Suppress("UNCHECKED_CAST")
-internal class LaunchInterceptor(private val meta: RouterMeta) : RouterInterceptor {
+internal class LaunchInterceptor(private val meta: RouterMeta) : RouterInterceptorV2 {
 
+    override fun intercept(chain: RouterChain): RouterOutcome = execute(chain.context)
+
+    @Deprecated("由 RouterInterceptorV2.intercept(RouterChain) 替代")
     override fun intercept(context: Context, chain: RouterInterceptor.Chain): RouterResponse {
+        val routerContext = RouterContext(
+            context,
+            chain.request(),
+            RouterDestination(meta.uri.toString(), meta.routerType, meta.description),
+            RouterOptions.DEFAULT
+        )
+        return execute(routerContext).toResponse(routerContext)
+    }
+
+    private fun execute(context: RouterContext): RouterOutcome {
         return try {
             when (meta.routerType) {
-                RouterType.ACTIVITY -> startActivity(context, chain.request(), meta)
-                RouterType.FRAGMENT -> startFragment(context, chain.request(), meta)
-                RouterType.VIEW -> startView(context, chain.request(), meta)
-                RouterType.SERVICE -> startService(context, chain.request(), meta)
-                RouterType.HANDLER -> startHandler(context, chain.request(), meta)
+                RouterType.ACTIVITY -> RouterOutcomeMapper.fromLegacyResponse(
+                    startActivity(context.appContext, context.request, meta),
+                    context
+                )
+                RouterType.FRAGMENT -> RouterOutcomeMapper.fromLegacyResponse(
+                    startFragment(context.appContext, context.request, meta),
+                    context
+                )
+                RouterType.VIEW -> RouterOutcomeMapper.fromLegacyResponse(
+                    startView(context.appContext, context.request, meta),
+                    context
+                )
+                RouterType.SERVICE -> RouterOutcomeMapper.fromLegacyResponse(
+                    startService(context.appContext, context.request, meta),
+                    context
+                )
+                RouterType.HANDLER -> startHandler(context, meta)
                 RouterType.UNDEFINED -> {
                     OkRouter.logger.e("LaunchInterceptor: routerType is UNDEFINED for ${meta.uri}")
-                    RouterResponse.Builder()
-                        .uri(chain.request().uri)
-                        .routerType(meta.routerType)
-                        .routerResult(RouterResult.Failed(IllegalStateException("routerType 不能为 UNDEFINED")))
-                        .build()
+                    RouterOutcome.Failed(IllegalStateException("routerType 不能为 UNDEFINED"))
                 }
             }
         } catch (e: Exception) {
-            OkRouter.logger.e("LaunchInterceptor: 目标启动失败 uri=${chain.request().uri}, type=${meta.routerType}", e)
-            RouterResponse.Builder()
-                .uri(chain.request().uri)
-                .routerType(meta.routerType)
-                .routerResult(RouterResult.Failed(e))
-                .build()
+            OkRouter.logger.e("LaunchInterceptor: 目标启动失败 uri=${context.request.uri}, type=${meta.routerType}", e)
+            RouterOutcome.Failed(e)
         }
     }
 
     private fun startHandler(
-        context: Context,
-        request: RouterRequest,
+        context: RouterContext,
         meta: RouterMeta
-    ): RouterResponse {
+    ): RouterOutcome {
         val factory = meta.factory
         var target: RouterHandler?
-        target = factory?.create(context) as? RouterHandler
+        target = factory?.create(context.appContext) as? RouterHandler
         if (target == null) {
             val clazz = meta.clazz as? Class<RouterHandler>
             target = clazz?.newInstance()
@@ -59,13 +75,20 @@ internal class LaunchInterceptor(private val meta: RouterMeta) : RouterIntercept
         checkNotNull(target) {
             "target should not null!"
         }
-        target.handle(context,request)
-        return RouterResponse.Builder()
-            .uri(request.uri)
-            .routerType(meta.routerType)
-            .routerResult(RouterResult.Ok)
-            .header(OKROUTER_NOTE,"OK")
-            .build()
+        return if (target is RouterHandlerV2) {
+            target.handle(context)
+        } else {
+            target.handle(context.appContext, context.request)
+            RouterOutcomeMapper.fromLegacyResponse(
+                RouterResponse.Builder()
+                    .uri(context.request.uri)
+                    .routerType(meta.routerType)
+                    .routerResult(RouterResult.Ok)
+                    .header(OKROUTER_NOTE, "OK")
+                    .build(),
+                context
+            )
+        }
     }
 
     private fun startService(

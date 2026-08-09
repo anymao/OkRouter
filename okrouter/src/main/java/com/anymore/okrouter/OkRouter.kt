@@ -3,11 +3,17 @@ package com.anymore.okrouter
 import android.app.Application
 import android.content.Context
 import com.anymore.okrouter.core.Logger
+import com.anymore.okrouter.core.RouterMatch
+import com.anymore.okrouter.core.RouterObserver
+import com.anymore.okrouter.core.RouterOutcome
 import com.anymore.okrouter.core.RouterLostHandler
 import com.anymore.okrouter.core.RouterRequest
 import com.anymore.okrouter.core.RouterResponse
+import com.anymore.okrouter.core.RouterContext
 import com.anymore.okrouter.core.internal.RouterDispatcher
+import com.anymore.okrouter.core.internal.RouterResolver
 import com.anymore.okrouter.warehouse.OkRouterLoader
+import java.util.concurrent.CopyOnWriteArraySet
 
 /**
  * Created by anymore on 2023/6/5.
@@ -36,6 +42,43 @@ object OkRouter {
     @JvmStatic
     var logger: Logger = Logger.Default
 
+    private val observers = CopyOnWriteArraySet<RouterObserver>()
+
+    /** 注册路由观察者。重复注册同一实例会被忽略。 */
+    @JvmStatic
+    fun addObserver(observer: RouterObserver) {
+        observers += observer
+    }
+
+    /** 移除已注册的路由观察者。 */
+    @JvmStatic
+    fun removeObserver(observer: RouterObserver) {
+        observers -= observer
+    }
+
+    internal fun notifyResolved(match: RouterMatch) {
+        observers.forEach { observer ->
+            runCatching { observer.onResolved(match) }
+                .onFailure { error -> logObserverFailure("RouterObserver.onResolved 执行失败", error) }
+        }
+    }
+
+    internal fun notifyFinished(context: RouterContext?, outcome: RouterOutcome) {
+        observers.forEach { observer ->
+            runCatching { observer.onFinished(context, outcome) }
+                .onFailure { error -> logObserverFailure("RouterObserver.onFinished 执行失败", error) }
+        }
+    }
+
+    /** 观察者和日志器均属于旁路能力，任何异常都不能改变路由结果。 */
+    private fun logObserverFailure(message: String, error: Throwable) {
+        try {
+            logger.e(message, error)
+        } catch (_: Throwable) {
+            // 日志器异常忽略，确保后续观察者与路由链继续执行。
+        }
+    }
+
     @JvmStatic
     fun init(context: Context) {
         //幂等：重复调用直接跳过，避免重复加载路由表
@@ -55,6 +98,29 @@ object OkRouter {
 
     @JvmStatic
     fun build(uri: String) = RouterRequest.Builder().uri(uri)
+
+    /**
+     * 仅解析 URI 的目标和 query 参数，不初始化应用、不执行拦截器，也不发起跳转。
+     *
+     * 空白 URI 返回 [RouterMatch.Invalid]；URI 有效但未注册匹配目标时返回
+     * [RouterMatch.NotFound]。
+     */
+    @JvmStatic
+    fun resolve(uri: String): RouterMatch {
+        if (uri.isBlank()) return RouterMatch.Invalid("URI 不能为空")
+        return try {
+            resolve(RouterRequest.Builder().uri(uri).build())
+        } catch (error: IllegalStateException) {
+            RouterMatch.Invalid(error.message ?: "URI 非法")
+        }
+    }
+
+    /**
+     * 仅解析已构造的请求，不初始化应用、不执行拦截器，也不发起跳转。
+     * 未匹配任何已注册路由时返回 [RouterMatch.NotFound]。
+     */
+    @JvmStatic
+    fun resolve(request: RouterRequest): RouterMatch = RouterResolver.resolve(request)
 
     @JvmOverloads
     @JvmStatic

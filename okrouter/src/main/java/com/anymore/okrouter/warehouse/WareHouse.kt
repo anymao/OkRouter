@@ -78,6 +78,17 @@ internal object WareHouse {
     }
 
     fun getMatchRouterMeta(uri: String): RouterMeta? {
+        return matchRouterMeta(uri, cacheDynamicResult = true)
+    }
+
+    /**
+     * 只读取当前路由表进行匹配，不写入动态路由缓存。
+     */
+    internal fun findRouterMeta(uri: String): RouterMeta? {
+        return matchRouterMeta(uri, cacheDynamicResult = false)
+    }
+
+    private fun matchRouterMeta(uri: String, cacheDynamicResult: Boolean): RouterMeta? {
         logger.v("getMatchRouterMeta for full uri:$uri")
         val clearedUri = Uri.parse(uri).buildUpon().clearQuery().fragment(null).build()
         logger.v("build cleared uri $clearedUri")
@@ -97,7 +108,9 @@ internal object WareHouse {
                         .matches(host) && key.path.toRegex().matches(path)
                 ) {
                     logger.d("match regex router:${value.uri}")
-                    dynamicRouters[clearedUri.toString()] = value
+                    if (cacheDynamicResult) {
+                        dynamicRouters[clearedUri.toString()] = value
+                    }
                     return value
                 }
             }

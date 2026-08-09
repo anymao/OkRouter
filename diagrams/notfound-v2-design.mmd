@@ -1,0 +1,11 @@
+flowchart LR
+    S["OkRouter.start / build"] --> D["RouterDispatcher"]
+    D --> R["RouterResolver"]
+    R --> N["NotFoundEvent<br/>request · URI · traceId"]
+    N --> V["RouterObserver<br/>onEvent()"]
+    D --> P["RouterLostHandler<br/>handle()"]
+    P --> O["RouterLostOutcome<br/>NotHandled · Redirect · Failed"]
+    O --> D
+    D --> M["RouterOutcomeMapper"]
+    M --> Q["RouterResponse / RouterResult"]
+    M --> V
