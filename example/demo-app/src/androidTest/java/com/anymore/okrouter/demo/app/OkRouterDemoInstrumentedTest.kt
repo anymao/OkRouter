@@ -7,6 +7,10 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.anymore.okrouter.OkRouter
+import com.anymore.okrouter.core.RouterContext
+import com.anymore.okrouter.core.RouterMatch
+import com.anymore.okrouter.core.RouterObserver
+import com.anymore.okrouter.core.RouterOutcome
 import com.anymore.okrouter.demo.biz1.Biz1Activity
 import com.anymore.okrouter.demo.biz1.R as Biz1R
 import org.junit.Assert.assertEquals
@@ -71,5 +75,72 @@ class OkRouterDemoInstrumentedTest {
         launched?.finish()
         instrumentation.removeMonitor(monitor)
         scenario.close()
+    }
+
+    @Test
+    fun resolveShouldReturnFoundWithoutLaunchingActivity() {
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+
+        scenario.onActivity {
+            val match = OkRouter.resolve("okrouter://android/main?tab=detail#top")
+
+            assertTrue("已注册路由应解析为 Found", match is RouterMatch.Found)
+            val found = match as RouterMatch.Found
+            assertEquals("okrouter://android/main?tab=detail#top", found.uri)
+            assertEquals("ACTIVITY", found.destination.type.name)
+            assertEquals("detail", found.parameters["tab"])
+        }
+
+        scenario.close()
+    }
+
+    @Test
+    fun resolveShouldReturnInvalidForBlankUriWithoutLaunchingNotFoundPage() {
+        val monitor = instrumentation.addMonitor(RouterNotFoundActivity::class.java.name, null, false)
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+
+        scenario.onActivity {
+            val match = OkRouter.resolve("   ")
+
+            assertEquals(RouterMatch.Invalid("URI 不能为空"), match)
+        }
+
+        assertEquals(
+            "仅解析空 URI 不应启动兜底页面",
+            null,
+            instrumentation.waitForMonitorWithTimeout(monitor, 500)
+        )
+        instrumentation.removeMonitor(monitor)
+        scenario.close()
+    }
+
+    @Test
+    fun viewRouteShouldNotifyObserverInResolvedThenFinishedOrder() {
+        val events = mutableListOf<String>()
+        val observer = object : RouterObserver {
+            override fun onResolved(match: RouterMatch) {
+                events += "resolved:${match::class.simpleName}"
+            }
+
+            override fun onFinished(context: RouterContext?, outcome: RouterOutcome) {
+                events += "finished:${outcome::class.simpleName}"
+            }
+        }
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        try {
+            OkRouter.addObserver(observer)
+            scenario.onActivity { activity ->
+                val response = OkRouter.build("okrouter://android/custom_text_view").start(activity)
+                assertEquals("Ok", response.routerResult.value)
+            }
+
+            assertEquals(
+                listOf("resolved:Found", "finished:Completed"),
+                events
+            )
+        } finally {
+            OkRouter.removeObserver(observer)
+            scenario.close()
+        }
     }
 }
