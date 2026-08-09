@@ -10,7 +10,7 @@ import android.os.PersistableBundle
 import androidx.activity.result.ActivityResultLauncher
 import androidx.annotation.RequiresApi
 import androidx.collection.ArrayMap
-import com.anymore.okrouter.OkRouter.application
+import com.anymore.okrouter.OkRouter
 import com.anymore.okrouter.OkRouter.logger
 import com.anymore.okrouter.core.internal.RouterDispatcher
 import java.io.Serializable
@@ -36,6 +36,18 @@ class RouterRequest private constructor(
             routerType,
             launcher
         )
+
+    /**
+     * 以新 URI 创建重定向请求，同时保留发起请求时已显式提供的配置。
+     *
+     * 新 URI 的 query 仅补充原 extras 中不存在的键；同名键始终保留原 extras 的值。
+     */
+    internal fun withRedirectUri(uri: String): RouterRequest {
+        val redirectedRequest = newBuilder().uri(uri).build()
+        redirectedRequest.extras.putAll(extras)
+        redirectedRequest.extras.putString(Extend.OKROUTER_RAW_URI, uri)
+        return redirectedRequest
+    }
 
     override fun toString(): String {
         return "RouterRequest(requestCode=$requestCode, uri='$uri', headers=$headers, extras=$extras, routerType=$routerType)"
@@ -360,17 +372,41 @@ class RouterRequest private constructor(
         }
 
         @JvmOverloads
-        fun start(context: Context = application, requestCode: Int = -1): RouterResponse {
+        fun start(context: Context? = null, requestCode: Int = -1): RouterResponse {
             requestCode(requestCode)
-            return RouterDispatcher.start(context, build())
+            val ctx = context ?: OkRouter.application
+                ?: throw IllegalStateException("OkRouter 未初始化，请先调用 OkRouter.init(context)")
+            val request = try {
+                build()
+            } catch (e: IllegalStateException) {
+                // 仅捕获 build() 中 check(!u.isNullOrEmpty()) 抛出的异常
+                OkRouter.logger.e("RouterRequest: URI 参数非法", e)
+                return invalidRequestResponse(e)
+            }
+            // 分发链路（含用户自定义拦截器）不在捕获范围内：
+            // 拦截器抛出的 IllegalStateException 不应被误归类为 InvalidRequest
+            return RouterDispatcher.start(ctx, request)
         }
-
-
 
         fun start(context: Context, launcher: ActivityResultLauncher<Intent>): RouterResponse {
             launcher(launcher)
-            return RouterDispatcher.start(context, build())
+            val request = try {
+                build()
+            } catch (e: IllegalStateException) {
+                // 与 start(context, requestCode) 保持同等防护：URI 非法时转为 InvalidRequest
+                OkRouter.logger.e("RouterRequest: URI 参数非法", e)
+                return invalidRequestResponse(e)
+            }
+            return RouterDispatcher.start(context, request)
         }
+
+        /** 构造 URI 参数非法时的 InvalidRequest 响应 */
+        private fun invalidRequestResponse(e: IllegalStateException): RouterResponse =
+            RouterResponse.Builder()
+                .uri(uri ?: "(null)")
+                .routerType(routerType)
+                .routerResult(RouterResult.InvalidRequest(e.message ?: "URI 为空"))
+                .build()
 
         /**
          * 解析uri query部分的参数，以key-value形式存在bundle中，且全部为String类型

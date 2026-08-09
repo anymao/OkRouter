@@ -7,11 +7,12 @@ import com.anymore.okrouter.core.RouterType
  * 路由表元信息
  * Created by anymore on 2023/6/6.
  */
-class RouterMeta(
+class RouterMeta @JvmOverloads constructor(
     val uri: RouterUri,
     val routerType: RouterType,
     val clazzName: String,
     val clazz: Class<*>,
     val interceptors: Array<Class<out RouterInterceptor>>,
-    val factory: ContextFactory? = null
+    val factory: ContextFactory? = null,
+    val description: String = ""
 )
